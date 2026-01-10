@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Generador de Banners - Jesús Díaz Automotores</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <h1>Generador de Banners <span>Jesús Díaz Automotores</span></h1>
+
+    <div class="card">
+      <div class="card-title">Tipo de banner</div>
+      <div class="form-grid">
+        <label>
+          Plantilla
+          <select id="template">
+            <option value="portada">Portada / Ficha</option>
+            <option value="venta">Venta</option>
+            <option value="vendido">Vendido</option>
+            <option value="felicitaciones">Felicitaciones</option>
+          </select>
+        </label>
+
+        <label class="only-felicitaciones is-hidden">
+          Nombre cliente
+          <input id="clientName" type="text" placeholder="LUCIANO CHAPARRO" />
+        </label>
+
+        <label class="only-vendido is-hidden">
+          Texto diagonal
+          <input id="soldText" type="text" placeholder="VENDIDO" value="VENDIDO" />
+        </label>
+      </div>
+      <p class="hint">
+        Elegí la plantilla y completá los datos. Luego subí las fotos y generá.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Datos del vehículo</div>
+      <div class="form-grid">
+        <label class="only-portada">
+          Marca
+          <input id="brand" type="text" placeholder="Renault" />
+        </label>
+
+        <label>
+          Modelo
+          <input id="model" type="text" placeholder="Oroch" />
+        </label>
+
+        <label>
+          Año
+          <input id="year" type="number" placeholder="2019" />
+        </label>
+
+        <label>
+          Versión
+          <input id="version" type="text" placeholder="Outsider 1.6" />
+        </label>
+
+        <label class="only-venta only-vendido is-hidden">
+          Motor
+          <input id="engine" type="text" placeholder="1.6" />
+        </label>
+
+        <label class="only-portada">
+          Caja
+          <input id="gearbox" type="text" placeholder="Manual" />
+        </label>
+
+        <label>
+          Kilometraje
+          <input id="km" type="number" placeholder="170000" />
+        </label>
+
+        <label class="only-portada">
+          Extra 1
+          <input id="extra1" type="text" placeholder="Entrega inmediata" />
+        </label>
+
+        <label class="only-portada">
+          Extra 2
+          <input id="extra2" type="text" placeholder="Financiación" />
+        </label>
+      </div>
+
+      <p class="hint only-portada">
+        En Portada/Ficha, todo se dibuja sobre la foto. El recorte es tipo “cover” (sin deformar).
+      </p>
+
+      <p class="hint only-venta only-vendido is-hidden">
+        En Venta/Vendido, la línea inferior se arma como: <strong>MODELO/AÑO/VERSIÓN/MOTOR/KM</strong>.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Fotos del vehículo</div>
+      <div class="file-input-wrapper">
+        <label>
+          <span>Seleccionar imágenes</span>
+          <input id="images" type="file" accept="image/*" multiple />
+        </label>
+        <p class="hint">Podés seleccionar varias a la vez.</p>
+      </div>
+
+      <div class="actions">
+        <button id="generateBtn" class="btn-primary">
+          <span>⚙️ Generar</span>
+        </button>
+        <div class="status" id="statusText">
+          Listo para generar. Subí las fotos y completá los datos.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span class="badge"><span class="badge-dot"></span> Banners generados</span>
+      </div>
+      <div id="previews" class="previews"></div>
+      <div class="actions" style="margin-top: 14px;">
+        <button id="downloadZipBtn" class="btn-secondary" disabled>
+          ⬇️ Descargar ZIP
+        </button>
+        <div class="hint">Después de generar, podés <strong>arrastrar la preview</strong> para reencuadrar y ajustar el <strong>zoom</strong>, y luego descargar el ZIP.</div>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      Todo el procesamiento se hace en tu navegador. Nada se sube a ningún servidor.
+    </div>
+  </div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
