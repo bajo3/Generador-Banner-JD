@@ -70,13 +70,22 @@ export function textStrokeFill(ctx, text, x, y, options = {}) {
     font = "bold 84px system-ui, sans-serif",
     fill = "#ffffff",
     stroke = "#000000",
-    lineWidth = 10,
+    lineWidth,
     shadowColor = "rgba(0,0,0,0.25)",
     shadowBlur = 10,
     shadowOffsetY = 4,
     align = "center",
     baseline = "alphabetic",
   } = options;
+
+  // If lineWidth is not provided, derive a professional-looking stroke
+  // from the font size (works well for big title texts).
+  let lw = lineWidth;
+  if (lw === undefined || lw === null) {
+    const m = String(font).match(/\b(\d+(?:\.\d+)?)px\b/);
+    const size = m ? Number(m[1]) : 84;
+    lw = Math.max(6, Math.round(size * 0.12));
+  }
 
   ctx.save();
   ctx.font = font;
@@ -91,7 +100,7 @@ export function textStrokeFill(ctx, text, x, y, options = {}) {
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = shadowOffsetY;
 
-  ctx.lineWidth = lineWidth;
+  ctx.lineWidth = lw;
   ctx.strokeStyle = stroke;
   ctx.strokeText(text, x, y);
 
@@ -100,6 +109,52 @@ export function textStrokeFill(ctx, text, x, y, options = {}) {
 
   ctx.fillStyle = fill;
   ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+export function avgLuminance(ctx, x, y, w, h) {
+  // Returns 0..1 (0 = dark, 1 = bright)
+  const ix = Math.max(0, Math.floor(x));
+  const iy = Math.max(0, Math.floor(y));
+  const iw = Math.max(1, Math.floor(Math.min(w, ctx.canvas.width - ix)));
+  const ih = Math.max(1, Math.floor(Math.min(h, ctx.canvas.height - iy)));
+  try {
+    const img = ctx.getImageData(ix, iy, iw, ih).data;
+    let sum = 0;
+    const step = 4 * 10; // sample every 10 pixels-ish
+    for (let i = 0; i < img.length; i += step) {
+      const r = img[i] / 255;
+      const g = img[i + 1] / 255;
+      const b = img[i + 2] / 255;
+      // relative luminance
+      sum += 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+    const count = Math.max(1, Math.floor(img.length / step));
+    return sum / count;
+  } catch {
+    return 0.5;
+  }
+}
+
+export function drawRuleOfThirds(ctx, w, h, alpha = 0.35) {
+  ctx.save();
+  ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 10]);
+  const x1 = w / 3;
+  const x2 = (2 * w) / 3;
+  const y1 = h / 3;
+  const y2 = (2 * h) / 3;
+  ctx.beginPath();
+  ctx.moveTo(x1, 0);
+  ctx.lineTo(x1, h);
+  ctx.moveTo(x2, 0);
+  ctx.lineTo(x2, h);
+  ctx.moveTo(0, y1);
+  ctx.lineTo(w, y1);
+  ctx.moveTo(0, y2);
+  ctx.lineTo(w, y2);
+  ctx.stroke();
   ctx.restore();
 }
 

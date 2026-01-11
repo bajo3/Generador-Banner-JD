@@ -98,10 +98,14 @@ export async function renderFelicitaciones({ img, data, transform = { zoom: 1, p
 
   drawFelicitaciones(ctx, img, data, transform);
 
+  const format = data?.__exportFormat || "jpg";
+  const quality = Number(data?.__exportQuality ?? 0.92);
+  const mime = format === "png" ? "image/png" : "image/jpeg";
+
   const blob = await new Promise((resolve) =>
-    canvas.toBlob(resolve, "image/jpeg", 0.92)
+    canvas.toBlob(resolve, mime, mime === "image/jpeg" ? quality : undefined)
   );
-  const dataURL = canvas.toDataURL("image/jpeg", 0.92);
+  const dataURL = canvas.toDataURL(mime, mime === "image/jpeg" ? quality : undefined);
 
   return { blob, dataURL };
 }

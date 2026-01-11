@@ -36,3 +36,19 @@ export function upper(s) {
 export function cleanSpaces(s) {
   return String(s || "").trim().replace(/\s+/g, " ");
 }
+
+export function slugify(s) {
+  return cleanSpaces(s)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-+/g, "-");
+}
+
+export function pad2(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "00";
+  return String(Math.trunc(x)).padStart(2, "0");
+}

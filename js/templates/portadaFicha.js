@@ -1,4 +1,4 @@
-import { drawCoverPanZoom, textStrokeFill, fitText } from "../draw.js";
+import { drawCoverPanZoom, textStrokeFill, fitText, avgLuminance } from "../draw.js";
 import { formatKm, upper, cleanSpaces } from "../utils.js";
 
 const W = 1080;
@@ -26,6 +26,12 @@ export function drawPortadaFicha(ctx, img, data, transform = { zoom: 1, panX: 0,
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
 
+  // Auto-contrast sampling (0..1): if background is bright, increase stroke + shadow.
+  const lumTitle = avgLuminance(ctx, W * 0.12, 120, W * 0.76, 270);
+  const titleShadowBlur = lumTitle > 0.65 ? 20 : 14;
+  const titleShadowAlpha = lumTitle > 0.65 ? 0.35 : 0.22;
+  const titleStrokeBoost = lumTitle > 0.65 ? 1.25 : 1.0;
+
   // Title (Marca / Modelo)
   const brand = upper(data.brand);
   const model = upper(data.model);
@@ -39,11 +45,11 @@ export function drawPortadaFicha(ctx, img, data, transform = { zoom: 1, panX: 0,
 
   textStrokeFill(ctx, title1, W/2, 230, {
     font: `900 ${size1}px system-ui, -apple-system, Segoe UI, sans-serif`,
-    lineWidth: 10,
     stroke: "#000",
     fill: "#fff",
-    shadowColor: "rgba(0,0,0,0.20)",
-    shadowBlur: 14,
+    lineWidth: Math.max(6, Math.round(size1 * 0.12 * titleStrokeBoost)),
+    shadowColor: `rgba(0,0,0,${titleShadowAlpha})`,
+    shadowBlur: titleShadowBlur,
     shadowOffsetY: 6,
     align: "center",
     baseline: "alphabetic",
@@ -51,11 +57,11 @@ export function drawPortadaFicha(ctx, img, data, transform = { zoom: 1, panX: 0,
 
   textStrokeFill(ctx, title2, W/2, 330, {
     font: `900 ${size2}px system-ui, -apple-system, Segoe UI, sans-serif`,
-    lineWidth: 10,
     stroke: "#000",
     fill: "#fff",
-    shadowColor: "rgba(0,0,0,0.20)",
-    shadowBlur: 14,
+    lineWidth: Math.max(6, Math.round(size2 * 0.12 * titleStrokeBoost)),
+    shadowColor: `rgba(0,0,0,${titleShadowAlpha})`,
+    shadowBlur: titleShadowBlur,
     shadowOffsetY: 6,
     align: "center",
     baseline: "alphabetic",
@@ -100,6 +106,11 @@ export function drawPortadaFicha(ctx, img, data, transform = { zoom: 1, panX: 0,
 
   let y = pillY + 110;
 
+  // Auto-contrast for details zone
+  const lumDetails = avgLuminance(ctx, W * 0.18, pillY + 40, W * 0.64, 320);
+  const detailShadowAlpha = lumDetails > 0.65 ? 0.55 : 0.35;
+  const detailShadowBlur = lumDetails > 0.65 ? 18 : 12;
+
   // big KM
   if (kmLine) {
     ctx.save();
@@ -107,8 +118,8 @@ export function drawPortadaFicha(ctx, img, data, transform = { zoom: 1, panX: 0,
     ctx.fillStyle = "#fff";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.shadowColor = "rgba(0,0,0,0.35)";
-    ctx.shadowBlur = 12;
+    ctx.shadowColor = `rgba(0,0,0,${detailShadowAlpha})`;
+    ctx.shadowBlur = detailShadowBlur;
     ctx.shadowOffsetY = 6;
     ctx.fillText(kmLine, W/2, y);
     ctx.restore();
@@ -127,8 +138,8 @@ export function drawPortadaFicha(ctx, img, data, transform = { zoom: 1, panX: 0,
   ctx.fillStyle = "#fff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.shadowColor = "rgba(0,0,0,0.35)";
-  ctx.shadowBlur = 10;
+  ctx.shadowColor = `rgba(0,0,0,${detailShadowAlpha})`;
+  ctx.shadowBlur = Math.max(10, Math.round(detailShadowBlur * 0.85));
   ctx.shadowOffsetY = 5;
 
   for (const line of lines) {
@@ -171,10 +182,14 @@ export async function renderPortadaFicha({ img, data, transform = { zoom: 1, pan
 
   drawPortadaFicha(ctx, img, data, transform);
 
+  const format = data?.__exportFormat || "jpg";
+  const quality = Number(data?.__exportQuality ?? 0.92);
+  const mime = format === "png" ? "image/png" : "image/jpeg";
+
   const blob = await new Promise((resolve) =>
-    canvas.toBlob(resolve, "image/jpeg", 0.92)
+    canvas.toBlob(resolve, mime, mime === "image/jpeg" ? quality : undefined)
   );
-  const dataURL = canvas.toDataURL("image/jpeg", 0.92);
+  const dataURL = canvas.toDataURL(mime, mime === "image/jpeg" ? quality : undefined);
 
   return { blob, dataURL };
 }
