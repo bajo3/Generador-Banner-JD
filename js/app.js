@@ -4,11 +4,14 @@ import {
   drawPortadaFicha,
   drawVenta,
   drawVendido,
+  drawHistoria,
   drawFelicitaciones,
   renderPortadaFicha,
   renderVenta,
   renderVendido,
+  renderHistoria,
   renderFelicitaciones,
+  historiaBlockFromY,
 } from "./templates/index.js";
 
 const imagesInput = document.getElementById("images");
@@ -25,6 +28,7 @@ const showGuidesChk = document.getElementById("showGuides");
 const expPortada = document.getElementById("exp_portada");
 const expVenta = document.getElementById("exp_venta");
 const expVendido = document.getElementById("exp_vendido");
+const expHistoria = document.getElementById("exp_historia");
 const expFelicitaciones = document.getElementById("exp_felicitaciones");
 
 const clientNameInput = document.getElementById("clientName");
@@ -39,7 +43,13 @@ const EXPORT_CONCURRENCY = 3;
 
 let state = {
   activeTemplate: "portada",
-  items: [], // { file, img, baseName, transform, canvas, zoomInput, nameEl }
+  // Loaded images (always kept in memory once generated)
+  images: [], // { file, img, baseName, index }
+  // Preview items for non-historia templates
+  items: [], // { file, img, baseName, transform, canvas, zoomInput, nameEl, index }
+  // Historia state
+  story: null,
+  storyItem: null,
   hasPreviews: false,
 };
 
@@ -59,7 +69,7 @@ function setActiveTemplate(template) {
     btn.classList.toggle("is-active", btn.dataset.template === template);
   });
   toggleFields();
-  rerenderAll();
+  rebuildPreviewsForActiveTemplate();
 }
 
 function toggleFields() {
@@ -74,6 +84,8 @@ function toggleFields() {
   setHidden(".only-vendido", t !== "vendido");
   setHidden(".only-venta", !(t === "venta" || t === "vendido"));
   setHidden(".only-portada", t !== "portada");
+  setHidden(".only-historia", t !== "historia");
+  setHidden(".only-gearbox", !(t === "portada" || t === "historia"));
   setHidden(".only-jpg", exportFormatSelect.value !== "jpg");
 }
 
@@ -101,6 +113,7 @@ function getFormData() {
     version: document.getElementById("version")?.value || "",
     engine: document.getElementById("engine")?.value || "",
     gearbox: document.getElementById("gearbox")?.value || "",
+    motorTraction: document.getElementById("motorTraction")?.value || "",
     km: document.getElementById("km")?.value || "",
     extra1: document.getElementById("extra1")?.value || "",
     extra2: document.getElementById("extra2")?.value || "",
@@ -114,6 +127,7 @@ function getSelectedTemplates() {
   if (expPortada?.checked) arr.push("portada");
   if (expVenta?.checked) arr.push("venta");
   if (expVendido?.checked) arr.push("vendido");
+  if (expHistoria?.checked) arr.push("historia");
   if (expFelicitaciones?.checked) arr.push("felicitaciones");
   return arr;
 }
@@ -122,6 +136,7 @@ function getDrawer(template) {
   if (template === "portada") return drawPortadaFicha;
   if (template === "venta") return drawVenta;
   if (template === "vendido") return drawVendido;
+  if (template === "historia") return drawHistoria;
   if (template === "felicitaciones") return drawFelicitaciones;
   return drawPortadaFicha;
 }
@@ -130,6 +145,7 @@ function getRenderer(template) {
   if (template === "portada") return renderPortadaFicha;
   if (template === "venta") return renderVenta;
   if (template === "vendido") return renderVendido;
+  if (template === "historia") return renderHistoria;
   if (template === "felicitaciones") return renderFelicitaciones;
   return renderPortadaFicha;
 }
@@ -138,6 +154,7 @@ function templatePrefix(template) {
   if (template === "portada") return "PORTADA";
   if (template === "venta") return "VENTA";
   if (template === "vendido") return "VENDIDO";
+  if (template === "historia") return "HISTORIA";
   if (template === "felicitaciones") return "FELICITACIONES";
   return "BANNER";
 }
@@ -146,6 +163,7 @@ function folderName(template) {
   if (template === "portada") return "portada";
   if (template === "venta") return "venta";
   if (template === "vendido") return "vendido";
+  if (template === "historia") return "historia";
   if (template === "felicitaciones") return "felicitaciones";
   return "banners";
 }
@@ -161,6 +179,8 @@ function getOutputName({ template, data, index, ext }) {
   let parts = [];
   if (template === "portada") {
     parts = [prefix, brand, model, year, n];
+  } else if (template === "historia") {
+    parts = [prefix, model, year, "01"];
   } else if (template === "felicitaciones") {
     parts = [prefix, model, year, client, n];
   } else {
@@ -172,6 +192,10 @@ function getOutputName({ template, data, index, ext }) {
 }
 
 function renderPreview(item) {
+  if (state.activeTemplate === "historia") {
+    renderStoryPreview();
+    return;
+  }
   const data = getFormData();
   const drawer = getDrawer(state.activeTemplate);
   const ctx = item.canvas.getContext("2d");
@@ -197,10 +221,78 @@ function rerenderAll() {
   if (!state.hasPreviews) return;
   if (rerenderTimer) cancelAnimationFrame(rerenderTimer);
   rerenderTimer = requestAnimationFrame(() => {
+    if (state.activeTemplate === "historia") {
+      updateStoryPreviewName();
+      renderStoryPreview();
+      return;
+    }
+
     state.items.forEach((item) => {
       updatePreviewName(item);
       renderPreview(item);
     });
+  });
+}
+
+function ensureStoryDefaults() {
+  if (state.story && state.story.blocks) return;
+  const total = state.images.length;
+  const pick = (fallback) => (total ? Math.min(total - 1, Math.max(0, fallback)) : 0);
+  state.story = {
+    activeBlock: 1,
+    blocks: {
+      // Historia: 3 photos distributed in blocks 1, 2 and 4.
+      // Block 3 is DATA ONLY (no photo).
+      1: { imgIndex: pick(0), transform: { zoom: 1, panX: 0, panY: 0 } },
+      2: { imgIndex: pick(1), transform: { zoom: 1, panX: 0, panY: 0 } },
+      4: { imgIndex: pick(2), transform: { zoom: 1, panX: 0, panY: 0 } },
+    },
+  };
+}
+
+function updateStoryPreviewName() {
+  if (!state.storyItem) return;
+  const data = getFormData();
+  const ext = exportFormatSelect.value === "png" ? "png" : "jpg";
+  const name = getOutputName({ template: "historia", data, index: 0, ext });
+  state.storyItem.nameEl.textContent = name;
+}
+
+function renderStoryPreview() {
+  if (!state.storyItem || !state.storyItem.canvas) return;
+  ensureStoryDefaults();
+  const data = getFormData();
+  const ctx = state.storyItem.canvas.getContext("2d");
+  drawHistoria(ctx, state.images, data, state.story);
+  if (showGuidesChk.checked) {
+    drawRuleOfThirds(ctx, state.storyItem.canvas.width, state.storyItem.canvas.height, 0.25);
+  }
+}
+
+function rebuildPreviewsForActiveTemplate() {
+  if (!state.hasPreviews) return;
+  previewsContainer.innerHTML = "";
+  state.items.forEach((it) => {
+    it.canvas = null;
+    it.zoomInput = null;
+    it.nameEl = null;
+  });
+  state.storyItem = null;
+
+  if (state.activeTemplate === "historia") {
+    ensureStoryDefaults();
+    const node = makeStoryPreviewItem();
+    previewsContainer.appendChild(node);
+    updateStoryPreviewName();
+    renderStoryPreview();
+    return;
+  }
+
+  // Non-historia: one preview per image
+  state.items.forEach((item) => {
+    const node = makePreviewItem(item);
+    previewsContainer.appendChild(node);
+    renderPreview(item);
   });
 }
 
@@ -215,6 +307,7 @@ document.addEventListener("input", (e) => {
     "version",
     "engine",
     "gearbox",
+    "motorTraction",
     "km",
     "extra1",
     "extra2",
@@ -362,6 +455,216 @@ function makePreviewItem(item) {
   return wrap;
 }
 
+function makeStoryPreviewItem() {
+  const wrap = document.createElement("div");
+  wrap.className = "preview-item";
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1920;
+  canvas.className = "preview-canvas preview-canvas-story";
+
+  const controls = document.createElement("div");
+  controls.className = "preview-controls";
+
+  const hint = document.createElement("div");
+  hint.className = "preview-control-label";
+  hint.textContent = "Historia: hacé click en un bloque de FOTO (1/2/4) y luego arrastrá/zoomeá";
+
+  const makeSelect = (labelText, blockNo) => {
+    const row = document.createElement("div");
+    row.className = "story-row";
+
+    const label = document.createElement("div");
+    label.className = "preview-control-label";
+    label.textContent = labelText;
+
+    const sel = document.createElement("select");
+    sel.className = "story-select";
+
+    state.images.forEach((im, idx) => {
+      const opt = document.createElement("option");
+      opt.value = String(idx);
+      opt.textContent = `${idx + 1} · ${im.baseName || "foto"}`;
+      sel.appendChild(opt);
+    });
+    sel.value = String(state.story.blocks[blockNo].imgIndex ?? 0);
+
+    sel.addEventListener("change", () => {
+      state.story.blocks[blockNo].imgIndex = Number(sel.value) || 0;
+      renderStoryPreview();
+    });
+
+    row.appendChild(label);
+    row.appendChild(sel);
+    return row;
+  };
+
+  const row1 = makeSelect("Foto Bloque 1", 1);
+  const row2 = makeSelect("Foto Bloque 2", 2);
+  const row4 = makeSelect("Foto Bloque 4", 4);
+
+  const zoomLabel = document.createElement("div");
+  zoomLabel.className = "preview-control-label";
+  zoomLabel.textContent = "Zoom (bloque activo)";
+
+  const zoom = document.createElement("input");
+  zoom.type = "range";
+  zoom.min = "1";
+  zoom.max = String(MAX_ZOOM);
+  zoom.step = "0.01";
+  zoom.className = "preview-zoom";
+
+  const applyAll = document.createElement("button");
+  applyAll.type = "button";
+  applyAll.className = "btn-secondary btn-apply-all";
+  applyAll.textContent = "Aplicar a los 3 bloques";
+
+  const reset = document.createElement("button");
+  reset.type = "button";
+  reset.className = "btn-secondary btn-reset";
+  reset.textContent = "Reset (bloque activo)";
+
+  const name = document.createElement("div");
+  name.className = "preview-name";
+
+  state.storyItem = {
+    canvas,
+    nameEl: name,
+    zoomInput: zoom,
+  };
+
+  const getActive = () => state.story.blocks[state.story.activeBlock];
+  const syncZoom = () => {
+    const b = getActive();
+    zoom.value = String(b?.transform?.zoom ?? 1);
+  };
+  syncZoom();
+
+  // Click selects PHOTO block (1/2/4). Block 3 is data-only.
+  canvas.addEventListener("pointerdown", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / Math.max(1, rect.width)) * canvas.width;
+    const y = ((e.clientY - rect.top) / Math.max(1, rect.height)) * canvas.height;
+    const b = historiaBlockFromY(y);
+    // Block 3 is data-only; keep last active photo block
+    if (b === 1 || b === 2 || b === 4) {
+      state.story.activeBlock = b;
+      syncZoom();
+    }
+  });
+
+  // Dragging affects active block
+  let dragging = false;
+  let lastX = 0;
+  let lastY = 0;
+
+  const getScale = () => {
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width / Math.max(1, rect.width);
+    const sy = canvas.height / Math.max(1, rect.height);
+    return { sx, sy };
+  };
+
+  canvas.addEventListener("pointerdown", (e) => {
+    dragging = true;
+    canvas.classList.add("is-dragging");
+    lastX = e.clientX;
+    lastY = e.clientY;
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch {}
+  });
+
+  canvas.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    const activeBlock = state.story.activeBlock;
+    if (!(activeBlock === 1 || activeBlock === 2 || activeBlock === 4)) return;
+    const { sx, sy } = getScale();
+    const dx = (e.clientX - lastX) * sx;
+    const dy = (e.clientY - lastY) * sy;
+    lastX = e.clientX;
+    lastY = e.clientY;
+
+    const t = state.story.blocks[activeBlock].transform;
+    t.panX += dx;
+    t.panY += dy;
+    renderStoryPreview();
+  });
+
+  const onUp = () => {
+    dragging = false;
+    canvas.classList.remove("is-dragging");
+  };
+  canvas.addEventListener("pointerup", onUp);
+  canvas.addEventListener("pointercancel", onUp);
+  canvas.addEventListener("pointerleave", onUp);
+
+  canvas.addEventListener(
+    "wheel",
+    (e) => {
+      e.preventDefault();
+      const activeBlock = state.story.activeBlock;
+      if (!(activeBlock === 1 || activeBlock === 2 || activeBlock === 4)) return;
+      const delta = Math.sign(e.deltaY);
+      const step = 0.03;
+      const t = state.story.blocks[activeBlock].transform;
+      const next = t.zoom + (delta < 0 ? step : -step);
+      t.zoom = Math.max(1, Math.min(MAX_ZOOM, next));
+      syncZoom();
+      renderStoryPreview();
+    },
+    { passive: false }
+  );
+
+  zoom.addEventListener("input", () => {
+    const activeBlock = state.story.activeBlock;
+    if (!(activeBlock === 1 || activeBlock === 2 || activeBlock === 4)) return;
+    const t = state.story.blocks[activeBlock].transform;
+    t.zoom = Math.max(1, Math.min(MAX_ZOOM, Number(zoom.value) || 1));
+    renderStoryPreview();
+  });
+
+  reset.addEventListener("click", () => {
+    const activeBlock = state.story.activeBlock;
+    if (!(activeBlock === 1 || activeBlock === 2 || activeBlock === 4)) return;
+    const t = state.story.blocks[activeBlock].transform;
+    t.zoom = 1;
+    t.panX = 0;
+    t.panY = 0;
+    syncZoom();
+    renderStoryPreview();
+  });
+
+  applyAll.addEventListener("click", () => {
+    const activeBlock = state.story.activeBlock;
+    if (!(activeBlock === 1 || activeBlock === 2 || activeBlock === 4)) return;
+    const src = state.story.blocks[activeBlock].transform;
+    [1, 2, 4].forEach((b) => {
+      state.story.blocks[b].transform.zoom = src.zoom;
+      state.story.blocks[b].transform.panX = src.panX;
+      state.story.blocks[b].transform.panY = src.panY;
+    });
+    syncZoom();
+    renderStoryPreview();
+  });
+
+  controls.appendChild(hint);
+  controls.appendChild(row1);
+  controls.appendChild(row2);
+  controls.appendChild(row4);
+  controls.appendChild(zoomLabel);
+  controls.appendChild(zoom);
+  controls.appendChild(applyAll);
+  controls.appendChild(reset);
+
+  wrap.appendChild(canvas);
+  wrap.appendChild(controls);
+  wrap.appendChild(name);
+
+  return wrap;
+}
+
 async function mapWithConcurrency(items, limit, worker, onProgress) {
   const queue = [...items];
   let done = 0;
@@ -391,7 +694,10 @@ async function generatePreviews() {
   generateBtn.disabled = true;
   downloadZipBtn.disabled = true;
   previewsContainer.innerHTML = "";
+  state.images = [];
   state.items = [];
+  state.story = null;
+  state.storyItem = null;
   state.hasPreviews = false;
 
   const t0 = performance.now();
@@ -421,29 +727,33 @@ async function generatePreviews() {
 
   // Keep original order
   loaded.sort((a, b) => a.index - b.index);
-  loaded.forEach(({ file, img, index }) => {
-    const baseName = getFileBaseName(file);
-    const item = {
-      file,
-      img,
-      baseName,
-      index,
-      transform: { zoom: 1, panX: 0, panY: 0 },
-      canvas: null,
-      zoomInput: null,
-      nameEl: null,
-    };
-    const node = makePreviewItem(item);
-    previewsContainer.appendChild(node);
-    state.items.push(item);
-    renderPreview(item);
-  });
+  state.images = loaded.map(({ file, img, index }) => ({
+    file,
+    img,
+    index,
+    baseName: getFileBaseName(file),
+  }));
+
+  // initialize per-image transforms for non-historia templates
+  state.items = state.images.map(({ file, img, baseName, index }) => ({
+    file,
+    img,
+    baseName,
+    index,
+    transform: { zoom: 1, panX: 0, panY: 0 },
+    canvas: null,
+    zoomInput: null,
+    nameEl: null,
+  }));
 
   state.hasPreviews = true;
   downloadZipBtn.disabled = false;
   generateBtn.disabled = false;
   setProgress(files.length, files.length, "Listo");
   setStatus(`✅ Previews listas: ${files.length}. Arrastrá para reencuadrar (zoom 1.5) y descargá el ZIP.`);
+
+  // render according to the active template
+  rebuildPreviewsForActiveTemplate();
 }
 
 async function buildZipAndDownload() {
@@ -470,7 +780,9 @@ async function buildZipAndDownload() {
     folders[t] = zip.folder(folderName(t));
   });
 
-  const total = state.items.length * selectedTemplates.length;
+  ensureStoryDefaults();
+  const perImageTemplates = selectedTemplates.filter((t) => t !== "historia");
+  const total = state.items.length * perImageTemplates.length + (selectedTemplates.includes("historia") ? 1 : 0);
   let done = 0;
   const t0 = performance.now();
 
@@ -478,16 +790,25 @@ async function buildZipAndDownload() {
   setProgress(0, total, "Exportando");
 
   const jobs = [];
-  for (const template of selectedTemplates) {
-    for (const item of state.items) {
-      jobs.push({ template, item });
-    }
+  // Historia exports a single image (not per-photo)
+  if (selectedTemplates.includes("historia")) {
+    jobs.push({ template: "historia", item: null });
+  }
+  for (const template of perImageTemplates) {
+    for (const item of state.items) jobs.push({ template, item });
   }
 
   await mapWithConcurrency(
     jobs,
     EXPORT_CONCURRENCY,
     async ({ template, item }) => {
+      if (template === "historia") {
+        const { blob } = await renderHistoria({ images: state.images, data, story: state.story });
+        const name = getOutputName({ template: "historia", data, index: 0, ext: exportFormat });
+        folders[template].file(name, blob);
+        return true;
+      }
+
       const renderer = getRenderer(template);
       const { blob } = await renderer({ img: item.img, data, transform: item.transform });
       const name = getOutputName({ template, data, index: item.index, ext: exportFormat });

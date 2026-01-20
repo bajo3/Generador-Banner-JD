@@ -17,6 +17,7 @@
         <button class="tab is-active" data-template="portada" type="button" role="tab">Portada / Ficha</button>
         <button class="tab" data-template="venta" type="button" role="tab">Venta</button>
         <button class="tab" data-template="vendido" type="button" role="tab">Vendido</button>
+        <button class="tab" data-template="historia" type="button" role="tab">Historia (9:16)</button>
         <button class="tab" data-template="felicitaciones" type="button" role="tab">Felicitaciones</button>
       </div>
 
@@ -27,6 +28,7 @@
             <label class="chk"><input id="exp_portada" type="checkbox" checked /> Portada</label>
             <label class="chk"><input id="exp_venta" type="checkbox" checked /> Venta</label>
             <label class="chk"><input id="exp_vendido" type="checkbox" checked /> Vendido</label>
+            <label class="chk"><input id="exp_historia" type="checkbox" checked /> Historia</label>
             <label class="chk"><input id="exp_felicitaciones" type="checkbox" checked /> Felicitaciones</label>
           </div>
         </label>
@@ -94,9 +96,14 @@
           <input id="engine" type="text" placeholder="1.6" />
         </label>
 
-        <label class="only-portada">
+        <label class="only-gearbox is-hidden">
           Caja
           <input id="gearbox" type="text" placeholder="Manual" />
+        </label>
+
+        <label class="only-historia is-hidden">
+          Motor / Tracción
+          <input id="motorTraction" type="text" placeholder="1.6 / 4x2" />
         </label>
 
         <label>
@@ -160,7 +167,7 @@
         <button id="downloadZipBtn" class="btn-secondary" disabled>
           ⬇️ Descargar ZIP
         </button>
-        <div class="hint">Después de generar, podés <strong>arrastrar la preview</strong> para reencuadrar y ajustar el <strong>zoom</strong>, y luego descargar el ZIP.</div>
+        <div class="hint">Después de generar, podés <strong>arrastrar la preview</strong> para reencuadrar y ajustar el <strong>zoom</strong>. En <strong>Historia</strong>, hacé click en un bloque de foto (1/2/4) para editar ese recorte.</div>
       </div>
     </div>
 

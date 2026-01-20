@@ -335,6 +335,35 @@ input[type="file"] {
   align-items: center;
   gap: 10px;
   padding: 6px 2px 2px;
+  flex-wrap: wrap;
+}
+
+.preview-canvas-story {
+  /* Evitar deformaciones: al tener max-height, el canvas se estiraba porque el width seguía en 100%.
+     Con aspect-ratio + width:auto se mantiene 9:16 igual al archivo descargado. */
+  max-height: 820px;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  aspect-ratio: 9 / 16;
+  margin: 0 auto;
+}
+
+.story-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.story-select {
+  flex: 1;
+  min-width: 220px;
+  background: rgba(255,255,255,0.06);
+  color: #eaeaf2;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 8px 10px;
 }
 
 .preview-control-label {
