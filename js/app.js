@@ -258,10 +258,11 @@ function rerenderAll() {
 
 function ensureStoryDefaults() {
   if (state.story && state.story.blocks) {
-    // Backward compat: if old 'splits' exist, treat them as 'separators' (visual only).
-    if (!state.story.separators && state.story.separators) {
-      state.story.separators = { ...state.story.separators };
-      delete state.story.separators;
+    // Backward compat: old versions used `splits` (resizing blocks).
+    // Current version uses `separators` (visual-only, blocks are fixed height).
+    if (!state.story.separators && state.story.splits) {
+      state.story.separators = { ...state.story.splits };
+      delete state.story.splits;
     }
     if (!state.story.separators) {
       state.story.separators = { s1: 480, s2: 960, s3: 1440 };
@@ -274,28 +275,6 @@ function ensureStoryDefaults() {
     activeBlock: 1,
     // Adjustable separator lines (visual only). Blocks remain fixed 4x equal height.
     separators: {
-      s1: 480,
-      s2: 960,
-      s3: 1440,
-    },
-    blocks: {
-      // Historia: 3 photos distributed in blocks 1, 2 and 4.
-      // Block 3 is DATA ONLY (no photo).
-      1: { imgIndex: pick(0), transform: { zoom: 1, panX: 0, panY: 0 } },
-      2: { imgIndex: pick(1), transform: { zoom: 1, panX: 0, panY: 0 } },
-      4: { imgIndex: pick(2), transform: { zoom: 1, panX: 0, panY: 0 } },
-    },
-  };
-}
-
-    return;
-  }
-  const total = state.images.length;
-  const pick = (fallback) => (total ? Math.min(total - 1, Math.max(0, fallback)) : 0);
-  state.story = {
-    activeBlock: 1,
-    // Adjustable split lines (y positions). Defaults mimic the old 4 equal blocks.
-    splits: {
       s1: 480,
       s2: 960,
       s3: 1440,
