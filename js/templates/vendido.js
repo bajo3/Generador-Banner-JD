@@ -88,7 +88,7 @@ export function drawVendido(ctx, img, data, transform = { zoom: 1, panX: 0, panY
   const year = String(data.year || "").trim();
   const version = upper(data.version);
   const engine = upper(data.engine);
-  const kmTxt = formatKm(data.km);
+  const kmTxt = data?.kmHidden ? "" : formatKm(data.km);
   const kmPart = kmTxt ? `${kmTxt}KM` : "";
 
   const mid = cleanSpaces([model, year, version, engine].filter(Boolean).join("/"));

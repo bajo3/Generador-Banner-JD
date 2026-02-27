@@ -9,12 +9,31 @@ const BG = "#000000";
 const PINK = "#ff008c";
 const TEXT = "#ffffff";
 
-// 4 equal blocks
+// Default: 4 equal blocks
 const BLOCK_H = Math.round(H / 4);
 
-function blockRect(blockNo) {
-  const i = blockNo - 1;
-  return { x: 0, y: i * BLOCK_H, w: W, h: BLOCK_H };
+function getSplits(story) {
+  const s = story?.splits;
+  const s1 = Number(s?.s1);
+  const s2 = Number(s?.s2);
+  const s3 = Number(s?.s3);
+  if (Number.isFinite(s1) && Number.isFinite(s2) && Number.isFinite(s3)) {
+    return { s1, s2, s3 };
+  }
+  return { s1: BLOCK_H, s2: BLOCK_H * 2, s3: BLOCK_H * 3 };
+}
+
+function blockRect(blockNo, splits) {
+  const s = splits || { s1: BLOCK_H, s2: BLOCK_H * 2, s3: BLOCK_H * 3 };
+  const y0 = 0;
+  const y1 = s.s1;
+  const y2 = s.s2;
+  const y3 = s.s3;
+  const y4 = H;
+  if (blockNo === 1) return { x: 0, y: y0, w: W, h: y1 - y0 };
+  if (blockNo === 2) return { x: 0, y: y1, w: W, h: y2 - y1 };
+  if (blockNo === 3) return { x: 0, y: y2, w: W, h: y3 - y2 };
+  return { x: 0, y: y3, w: W, h: y4 - y3 };
 }
 
 function drawSeparator(ctx, y) {
@@ -45,7 +64,7 @@ function drawDataBlock(ctx, rect, data) {
 
   const model = cleanSpaces(upper(data.model || ""));
   const year = String(data.year || "").trim();
-  const km = formatKm(data.km);
+  const km = data?.kmHidden ? "" : formatKm(data.km);
   const kmLine = km ? `${km}KM` : "";
   // Historia: bloque 3 debe ser simple y 100% legible (como la referencia):
   // 1) Modelo
@@ -126,10 +145,11 @@ export function drawHistoria(ctx, images, data, story) {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, W, H);
 
-  const r1 = blockRect(1);
-  const r2 = blockRect(2);
-  const r3 = blockRect(3);
-  const r4 = blockRect(4);
+  const splits = getSplits(story);
+  const r1 = blockRect(1, splits);
+  const r2 = blockRect(2, splits);
+  const r3 = blockRect(3, splits);
+  const r4 = blockRect(4, splits);
 
   // Photo blocks are 1, 2 and 4. Block 3 is the ONLY data/text block.
   const b1 = story?.blocks?.[1];
@@ -140,18 +160,20 @@ export function drawHistoria(ctx, images, data, story) {
   const img2 = images?.[b2?.imgIndex]?.img;
   const img4 = images?.[b4?.imgIndex]?.img;
 
-  // Layout:
+  // Layout (Historia 9:16):
   // 1) Photo
   // 2) Photo
   // 3) Data (ONLY text)
   // 4) Photo
+  // IMPORTANT: draw separators LAST so they always sit above photos.
   drawPhotoBlock(ctx, img1, r1, b1?.transform);
-  drawSeparator(ctx, r2.y);
   drawPhotoBlock(ctx, img2, r2, b2?.transform);
-  drawSeparator(ctx, r3.y);
   drawDataBlock(ctx, r3, data);
-  drawSeparator(ctx, r4.y);
   drawPhotoBlock(ctx, img4, r4, b4?.transform);
+
+  drawSeparator(ctx, splits.s1);
+  drawSeparator(ctx, splits.s2);
+  drawSeparator(ctx, splits.s3);
 }
 
 export async function renderHistoria({ images, data, story }) {
@@ -172,8 +194,11 @@ export async function renderHistoria({ images, data, story }) {
   return { blob, dataURL };
 }
 
-export function historiaBlockFromY(y) {
-  // returns 1..4
-  const b = Math.min(4, Math.max(1, Math.floor(y / BLOCK_H) + 1));
-  return b;
+export function historiaBlockFromY(y, splits) {
+  const s = splits || { s1: BLOCK_H, s2: BLOCK_H * 2, s3: BLOCK_H * 3 };
+  const yy = Number(y) || 0;
+  if (yy < s.s1) return 1;
+  if (yy < s.s2) return 2;
+  if (yy < s.s3) return 3;
+  return 4;
 }

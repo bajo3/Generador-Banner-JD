@@ -97,7 +97,7 @@ export function drawPortadaFicha(ctx, img, data, transform = { zoom: 1, panX: 0,
   ctx.restore();
 
   // Details below pill
-  const kmTxt = formatKm(data.km);
+  const kmTxt = data?.kmHidden ? "" : formatKm(data.km);
   const kmLine = kmTxt ? `${kmTxt}KM` : "";
   const gearbox = upper(data.gearbox);
   const year = String(data.year || "").trim();

@@ -34,6 +34,9 @@ const expFelicitaciones = document.getElementById("exp_felicitaciones");
 const clientNameInput = document.getElementById("clientName");
 const soldTextInput = document.getElementById("soldText");
 
+const kmInput = document.getElementById("km");
+const kmHiddenChk = document.getElementById("kmHidden");
+
 const progressBar = document.getElementById("progressBar");
 const progressMeta = document.getElementById("progressMeta");
 
@@ -114,13 +117,32 @@ function getFormData() {
     engine: document.getElementById("engine")?.value || "",
     gearbox: document.getElementById("gearbox")?.value || "",
     motorTraction: document.getElementById("motorTraction")?.value || "",
-    km: document.getElementById("km")?.value || "",
+    km: kmInput?.value || "",
+    kmHidden: Boolean(kmHiddenChk?.checked),
     extra1: document.getElementById("extra1")?.value || "",
     extra2: document.getElementById("extra2")?.value || "",
     clientName: clientNameInput?.value || "",
     soldText: soldTextInput?.value || "VENDIDO",
   };
 }
+
+function syncKmHiddenUI() {
+  if (!kmInput || !kmHiddenChk) return;
+  const hidden = Boolean(kmHiddenChk.checked);
+  if (hidden) {
+    kmInput.value = "";
+    kmInput.disabled = true;
+  } else {
+    kmInput.disabled = false;
+  }
+}
+
+// Ensure correct initial state
+syncKmHiddenUI();
+kmHiddenChk?.addEventListener("change", () => {
+  syncKmHiddenUI();
+  rerenderAll();
+});
 
 function getSelectedTemplates() {
   const arr = [];
@@ -235,11 +257,22 @@ function rerenderAll() {
 }
 
 function ensureStoryDefaults() {
-  if (state.story && state.story.blocks) return;
+  if (state.story && state.story.blocks) {
+    if (!state.story.splits) {
+      state.story.splits = { s1: 480, s2: 960, s3: 1440 };
+    }
+    return;
+  }
   const total = state.images.length;
   const pick = (fallback) => (total ? Math.min(total - 1, Math.max(0, fallback)) : 0);
   state.story = {
     activeBlock: 1,
+    // Adjustable split lines (y positions). Defaults mimic the old 4 equal blocks.
+    splits: {
+      s1: 480,
+      s2: 960,
+      s3: 1440,
+    },
     blocks: {
       // Historia: 3 photos distributed in blocks 1, 2 and 4.
       // Block 3 is DATA ONLY (no photo).
@@ -309,6 +342,7 @@ document.addEventListener("input", (e) => {
     "gearbox",
     "motorTraction",
     "km",
+    "kmHidden",
     "extra1",
     "extra2",
     "clientName",
@@ -541,21 +575,14 @@ function makeStoryPreviewItem() {
   };
   syncZoom();
 
-  // Click selects PHOTO block (1/2/4). Block 3 is data-only.
-  canvas.addEventListener("pointerdown", (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / Math.max(1, rect.width)) * canvas.width;
-    const y = ((e.clientY - rect.top) / Math.max(1, rect.height)) * canvas.height;
-    const b = historiaBlockFromY(y);
-    // Block 3 is data-only; keep last active photo block
-    if (b === 1 || b === 2 || b === 4) {
-      state.story.activeBlock = b;
-      syncZoom();
-    }
-  });
-
-  // Dragging affects active block
+  // Dragging can affect either:
+  // - The active PHOTO block pan (1/2/4)
+  // - The split lines between blocks (s1/s2/s3)
+  const SPLIT_HIT_PX = 20;
+  const MIN_BLOCK_H = 260;
   let dragging = false;
+  let dragMode = "none"; // 'photo' | 'split'
+  let dragSplitKey = null; // 's1' | 's2' | 's3'
   let lastX = 0;
   let lastY = 0;
 
@@ -566,8 +593,72 @@ function makeStoryPreviewItem() {
     return { sx, sy };
   };
 
+  const toCanvasXY = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / Math.max(1, rect.width)) * canvas.width;
+    const y = ((e.clientY - rect.top) / Math.max(1, rect.height)) * canvas.height;
+    return { x, y };
+  };
+
+  const nearestSplitKey = (y) => {
+    const s = state.story?.splits;
+    if (!s) return null;
+    const d1 = Math.abs(y - s.s1);
+    const d2 = Math.abs(y - s.s2);
+    const d3 = Math.abs(y - s.s3);
+    const min = Math.min(d1, d2, d3);
+    if (min > SPLIT_HIT_PX) return null;
+    if (min === d1) return "s1";
+    if (min === d2) return "s2";
+    return "s3";
+  };
+
+  const clampSplits = (key, nextValue) => {
+    const H = canvas.height;
+    const s = state.story.splits;
+    const next = { ...s };
+    if (key === "s1") {
+      next.s1 = Math.max(MIN_BLOCK_H, Math.min(nextValue, next.s2 - MIN_BLOCK_H));
+    } else if (key === "s2") {
+      next.s2 = Math.max(next.s1 + MIN_BLOCK_H, Math.min(nextValue, next.s3 - MIN_BLOCK_H));
+    } else if (key === "s3") {
+      next.s3 = Math.max(next.s2 + MIN_BLOCK_H, Math.min(nextValue, H - MIN_BLOCK_H));
+    }
+    // Ensure strict ordering
+    next.s1 = Math.min(next.s1, next.s2 - MIN_BLOCK_H);
+    next.s2 = Math.min(next.s2, next.s3 - MIN_BLOCK_H);
+    next.s3 = Math.min(next.s3, H - MIN_BLOCK_H);
+    return next;
+  };
+
   canvas.addEventListener("pointerdown", (e) => {
+    ensureStoryDefaults();
+    const { y } = toCanvasXY(e);
+
+    // 1) If user grabbed a split line, drag the split.
+    const splitKey = nearestSplitKey(y);
+    if (splitKey) {
+      dragging = true;
+      dragMode = "split";
+      dragSplitKey = splitKey;
+      canvas.classList.add("is-dragging");
+      lastY = e.clientY;
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch {}
+      return;
+    }
+
+    // 2) Otherwise, select the clicked PHOTO block and drag its pan.
+    const b = historiaBlockFromY(y, state.story.splits);
+    if (b === 1 || b === 2 || b === 4) {
+      state.story.activeBlock = b;
+      syncZoom();
+    }
+
     dragging = true;
+    dragMode = "photo";
+    dragSplitKey = null;
     canvas.classList.add("is-dragging");
     lastX = e.clientX;
     lastY = e.clientY;
@@ -577,23 +668,43 @@ function makeStoryPreviewItem() {
   });
 
   canvas.addEventListener("pointermove", (e) => {
-    if (!dragging) return;
-    const activeBlock = state.story.activeBlock;
-    if (!(activeBlock === 1 || activeBlock === 2 || activeBlock === 4)) return;
+    ensureStoryDefaults();
+    // Hover feedback when not dragging
+    if (!dragging) {
+      const { y } = toCanvasXY(e);
+      const k = nearestSplitKey(y);
+      canvas.style.cursor = k ? "row-resize" : "grab";
+      return;
+    }
+
     const { sx, sy } = getScale();
     const dx = (e.clientX - lastX) * sx;
     const dy = (e.clientY - lastY) * sy;
     lastX = e.clientX;
     lastY = e.clientY;
 
-    const t = state.story.blocks[activeBlock].transform;
-    t.panX += dx;
-    t.panY += dy;
-    renderStoryPreview();
+    if (dragMode === "split" && dragSplitKey) {
+      const current = state.story.splits[dragSplitKey];
+      const next = clampSplits(dragSplitKey, current + dy);
+      state.story.splits = next;
+      renderStoryPreview();
+      return;
+    }
+
+    if (dragMode === "photo") {
+      const activeBlock = state.story.activeBlock;
+      if (!(activeBlock === 1 || activeBlock === 2 || activeBlock === 4)) return;
+      const t = state.story.blocks[activeBlock].transform;
+      t.panX += dx;
+      t.panY += dy;
+      renderStoryPreview();
+    }
   });
 
   const onUp = () => {
     dragging = false;
+    dragMode = "none";
+    dragSplitKey = null;
     canvas.classList.remove("is-dragging");
   };
   canvas.addEventListener("pointerup", onUp);

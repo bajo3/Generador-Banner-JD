@@ -59,6 +59,38 @@ label {
   gap: 6px;
 }
 
+.km-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.km-row > input[type="number"] {
+  flex: 1 1 auto;
+}
+
+.km-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #333646;
+  background: #101019;
+  color: #f5f5f5;
+  font-size: 0.82rem;
+  text-transform: none;
+  letter-spacing: 0;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.km-check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #ff008c;
+}
+
 input[type="text"],
 input[type="number"],
 select {
