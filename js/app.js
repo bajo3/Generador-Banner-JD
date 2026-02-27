@@ -108,6 +108,27 @@ exportFormatSelect.addEventListener("change", () => {
 
 showGuidesChk.addEventListener("change", () => rerenderAll());
 
+// KM: allow hiding mileage explicitly
+kmHiddenChk?.addEventListener("change", () => {
+  if (!kmInput) return;
+  if (kmHiddenChk.checked) {
+    kmInput.value = "";
+    kmInput.disabled = true;
+  } else {
+    kmInput.disabled = false;
+  }
+  rerenderAll();
+});
+
+kmInput?.addEventListener("input", () => {
+  // If user starts typing, ensure it's not hidden.
+  if (kmHiddenChk && kmHiddenChk.checked) {
+    kmHiddenChk.checked = false;
+    kmInput.disabled = false;
+  }
+  rerenderAll();
+});
+
 function getFormData() {
   return {
     brand: document.getElementById("brand")?.value || "",
@@ -117,32 +138,14 @@ function getFormData() {
     engine: document.getElementById("engine")?.value || "",
     gearbox: document.getElementById("gearbox")?.value || "",
     motorTraction: document.getElementById("motorTraction")?.value || "",
-    km: kmInput?.value || "",
     kmHidden: Boolean(kmHiddenChk?.checked),
+    km: (kmHiddenChk?.checked ? "" : (kmInput?.value || "")),
     extra1: document.getElementById("extra1")?.value || "",
     extra2: document.getElementById("extra2")?.value || "",
     clientName: clientNameInput?.value || "",
     soldText: soldTextInput?.value || "VENDIDO",
   };
 }
-
-function syncKmHiddenUI() {
-  if (!kmInput || !kmHiddenChk) return;
-  const hidden = Boolean(kmHiddenChk.checked);
-  if (hidden) {
-    kmInput.value = "";
-    kmInput.disabled = true;
-  } else {
-    kmInput.disabled = false;
-  }
-}
-
-// Ensure correct initial state
-syncKmHiddenUI();
-kmHiddenChk?.addEventListener("change", () => {
-  syncKmHiddenUI();
-  rerenderAll();
-});
 
 function getSelectedTemplates() {
   const arr = [];
@@ -258,27 +261,15 @@ function rerenderAll() {
 
 function ensureStoryDefaults() {
   if (state.story && state.story.blocks) {
-    // Backward compat: old versions used `splits` (resizing blocks).
-    // Current version uses `separators` (visual-only, blocks are fixed height).
-    if (!state.story.separators && state.story.splits) {
-      state.story.separators = { ...state.story.splits };
-      delete state.story.splits;
-    }
-    if (!state.story.separators) {
-      state.story.separators = { s1: 480, s2: 960, s3: 1440 };
-    }
+    if (!state.story.separators) state.story.separators = { s1: 0, s2: 0, s3: 0 };
     return;
   }
   const total = state.images.length;
   const pick = (fallback) => (total ? Math.min(total - 1, Math.max(0, fallback)) : 0);
   state.story = {
     activeBlock: 1,
-    // Adjustable separator lines (visual only). Blocks remain fixed 4x equal height.
-    separators: {
-      s1: 480,
-      s2: 960,
-      s3: 1440,
-    },
+    // Visual-only separator offsets (px). Blocks remain fixed equal height.
+    separators: { s1: 0, s2: 0, s3: 0 },
     blocks: {
       // Historia: 3 photos distributed in blocks 1, 2 and 4.
       // Block 3 is DATA ONLY (no photo).
@@ -348,7 +339,6 @@ document.addEventListener("input", (e) => {
     "gearbox",
     "motorTraction",
     "km",
-    "kmHidden",
     "extra1",
     "extra2",
     "clientName",
@@ -409,6 +399,8 @@ function makePreviewItem(item) {
 
   // Dragging
   let dragging = false;
+  let dragMode = null; // 'pan' | 'sep'
+  let dragSepKey = null; // 's1'|'s2'|'s3'
   let lastX = 0;
   let lastY = 0;
 
@@ -444,6 +436,8 @@ function makePreviewItem(item) {
 
   const onUp = () => {
     dragging = false;
+    dragMode = null;
+    dragSepKey = null;
     canvas.classList.remove("is-dragging");
   };
 
@@ -581,17 +575,11 @@ function makeStoryPreviewItem() {
   };
   syncZoom();
 
-  // Dragging can affect either:
-  // - The active PHOTO block pan (1/2/4)
-  // - The split lines between blocks (s1/s2/s3)
-  const SPLIT_HIT_PX = 20;
-  const SEP_BAND = 120;     // max offset from default line position
-  const SEP_MIN_GAP = 180;  // safety gap between lines
-  const BASE_SEPS = { s1: 480, s2: 960, s3: 1440 };
 
+  // Dragging affects active block
   let dragging = false;
-  let dragMode = "none"; // 'photo' | 'split'
-  let dragSplitKey = null; // 's1' | 's2' | 's3'
+  let dragMode = null; // 'pan' | 'sep'
+  let dragSepKey = null; // 's1'|'s2'|'s3'
   let lastX = 0;
   let lastY = 0;
 
@@ -602,70 +590,35 @@ function makeStoryPreviewItem() {
     return { sx, sy };
   };
 
-  const toCanvasXY = (e) => {
+  canvas.addEventListener("pointerdown", (e) => {
     const rect = canvas.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / Math.max(1, rect.width)) * canvas.width;
     const y = ((e.clientY - rect.top) / Math.max(1, rect.height)) * canvas.height;
-    return { x, y };
-  };
 
-  const nearestSplitKey = (y) => {
-    const s = state.story?.separators;
-    if (!s) return null;
-    const d1 = Math.abs(y - s.s1);
-    const d2 = Math.abs(y - s.s2);
-    const d3 = Math.abs(y - s.s3);
-    const min = Math.min(d1, d2, d3);
-    if (min > SPLIT_HIT_PX) return null;
-    if (min === d1) return "s1";
-    if (min === d2) return "s2";
-    return "s3";
-  };
+    // Separator drag (visual only)
+    const base = { s1: 480, s2: 960, s3: 1440 };
+    const maxOff = 48;
+    const hitPx = 18;
+    const seps = state.story.separators || (state.story.separators = { s1: 0, s2: 0, s3: 0 });
 
-  const clampSeparators = (key, nextValue) => {
-    const s = state.story.separators;
-    const next = { ...s };
+    const sepKey =
+      Math.abs(y - (base.s1 + seps.s1)) <= hitPx ? "s1" :
+      Math.abs(y - (base.s2 + seps.s2)) <= hitPx ? "s2" :
+      Math.abs(y - (base.s3 + seps.s3)) <= hitPx ? "s3" :
+      null;
 
-    const clampBand = (v, base) => Math.max(base - SEP_BAND, Math.min(base + SEP_BAND, v));
-
-    if (key === "s1") next.s1 = clampBand(nextValue, BASE_SEPS.s1);
-    if (key === "s2") next.s2 = clampBand(nextValue, BASE_SEPS.s2);
-    if (key === "s3") next.s3 = clampBand(nextValue, BASE_SEPS.s3);
-
-    // Enforce strict ordering with a safe gap
-    next.s1 = Math.min(next.s1, next.s2 - SEP_MIN_GAP);
-    next.s2 = Math.min(next.s2, next.s3 - SEP_MIN_GAP);
-
-    next.s1 = Math.max(40, next.s1);
-    next.s2 = Math.max(next.s1 + SEP_MIN_GAP, next.s2);
-    next.s3 = Math.max(next.s2 + SEP_MIN_GAP, next.s3);
-
-    // Extra clamps to stay within canvas
-    next.s3 = Math.min(canvas.height - 40, next.s3);
-
-    return next;
-  };
-};
-
-  canvas.addEventListener("pointerdown", (e) => {
-    ensureStoryDefaults();
-    const { y } = toCanvasXY(e);
-
-    // 1) If user grabbed a split line, drag the split.
-    const splitKey = nearestSplitKey(y);
-    if (splitKey) {
+    if (sepKey) {
       dragging = true;
-      dragMode = "split";
-      dragSplitKey = splitKey;
+      dragMode = "sep";
+      dragSepKey = sepKey;
       canvas.classList.add("is-dragging");
+      lastX = e.clientX;
       lastY = e.clientY;
-      try {
-        canvas.setPointerCapture(e.pointerId);
-      } catch {}
+      try { canvas.setPointerCapture(e.pointerId); } catch {}
       return;
     }
 
-    // 2) Otherwise, select the clicked PHOTO block and drag its pan.
+    // Otherwise: select block + pan/zoom
     const b = historiaBlockFromY(y);
     if (b === 1 || b === 2 || b === 4) {
       state.story.activeBlock = b;
@@ -673,23 +626,28 @@ function makeStoryPreviewItem() {
     }
 
     dragging = true;
-    dragMode = "photo";
-    dragSplitKey = null;
+    dragMode = "pan";
     canvas.classList.add("is-dragging");
     lastX = e.clientX;
     lastY = e.clientY;
-    try {
-      canvas.setPointerCapture(e.pointerId);
-    } catch {}
+    try { canvas.setPointerCapture(e.pointerId); } catch {}
   });
 
+
   canvas.addEventListener("pointermove", (e) => {
-    ensureStoryDefaults();
-    // Hover feedback when not dragging
+    const rect = canvas.getBoundingClientRect();
+    const y = ((e.clientY - rect.top) / Math.max(1, rect.height)) * canvas.height;
+
+    // Hover feedback (when not dragging)
     if (!dragging) {
-      const { y } = toCanvasXY(e);
-      const k = nearestSplitKey(y);
-      canvas.style.cursor = k ? "row-resize" : "grab";
+      const base = { s1: 480, s2: 960, s3: 1440 };
+      const seps = state.story?.separators || { s1: 0, s2: 0, s3: 0 };
+      const hitPx = 18;
+      const near =
+        Math.abs(y - (base.s1 + seps.s1)) <= hitPx ||
+        Math.abs(y - (base.s2 + seps.s2)) <= hitPx ||
+        Math.abs(y - (base.s3 + seps.s3)) <= hitPx;
+      canvas.style.cursor = near ? "row-resize" : "grab";
       return;
     }
 
@@ -699,28 +657,29 @@ function makeStoryPreviewItem() {
     lastX = e.clientX;
     lastY = e.clientY;
 
-    if (dragMode === "split" && dragSplitKey) {
-      const current = state.story.separators[dragSplitKey];
-      const next = clampSeparators(dragSplitKey, current + dy);
-      state.story.separators = next;
+    if (dragMode === "sep" && dragSepKey) {
+      const maxOff = 48;
+      const seps = state.story.separators || (state.story.separators = { s1: 0, s2: 0, s3: 0 });
+      const next = (seps[dragSepKey] || 0) + dy;
+      seps[dragSepKey] = Math.max(-maxOff, Math.min(maxOff, next));
       renderStoryPreview();
       return;
     }
 
-    if (dragMode === "photo") {
-      const activeBlock = state.story.activeBlock;
-      if (!(activeBlock === 1 || activeBlock === 2 || activeBlock === 4)) return;
-      const t = state.story.blocks[activeBlock].transform;
-      t.panX += dx;
-      t.panY += dy;
-      renderStoryPreview();
-    }
+    // Default: pan photo in active block
+    const activeBlock = state.story.activeBlock;
+    if (!(activeBlock === 1 || activeBlock === 2 || activeBlock === 4)) return;
+    const t = state.story.blocks[activeBlock].transform;
+    t.panX += dx;
+    t.panY += dy;
+    renderStoryPreview();
   });
+
 
   const onUp = () => {
     dragging = false;
-    dragMode = "none";
-    dragSplitKey = null;
+    dragMode = null;
+    dragSepKey = null;
     canvas.classList.remove("is-dragging");
   };
   canvas.addEventListener("pointerup", onUp);

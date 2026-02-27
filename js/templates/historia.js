@@ -9,62 +9,25 @@ const BG = "#000000";
 const PINK = "#ff008c";
 const TEXT = "#ffffff";
 
-// Historia base layout: 4 equal blocks (fixed). Separators can be moved visually,
-// but blocks (and crops) remain fixed so the violet rectangles always fill correctly.
+// 4 equal blocks
 const BLOCK_H = Math.round(H / 4);
 
-// Visual separator dragging limits (px)
-const SEP_BAND = 120;     // how far each line can move from its default position
-const SEP_MIN_GAP = 180;  // safety gap between separators
-
-function defaultSeparators() {
-  return { s1: BLOCK_H, s2: BLOCK_H * 2, s3: BLOCK_H * 3 };
-}
-
-function clampSep(value, base) {
-  return Math.max(base - SEP_BAND, Math.min(base + SEP_BAND, value));
-}
-
-function getSeparators(story) {
-  const base = defaultSeparators();
-  const s = story?.separators || story?.splits; // backward compat if older state exists
-  const s1 = Number(s?.s1);
-  const s2 = Number(s?.s2);
-  const s3 = Number(s?.s3);
-
-  let out = {
-    s1: Number.isFinite(s1) ? clampSep(s1, base.s1) : base.s1,
-    s2: Number.isFinite(s2) ? clampSep(s2, base.s2) : base.s2,
-    s3: Number.isFinite(s3) ? clampSep(s3, base.s3) : base.s3,
-  };
-
-  // Ensure ordering and minimum gap (just in case)
-  out.s1 = Math.min(out.s1, out.s2 - SEP_MIN_GAP);
-  out.s2 = Math.min(out.s2, out.s3 - SEP_MIN_GAP);
-  out.s3 = Math.min(out.s3, H - 40);
-
-  out.s1 = Math.max(40, out.s1);
-  out.s2 = Math.max(out.s1 + SEP_MIN_GAP, out.s2);
-  out.s3 = Math.max(out.s2 + SEP_MIN_GAP, out.s3);
-
-  return out;
-}
-
 function blockRect(blockNo) {
-  const y0 = 0;
-  const y1 = BLOCK_H;
-  const y2 = BLOCK_H * 2;
-  const y3 = BLOCK_H * 3;
-  const y4 = H;
-  if (blockNo === 1) return { x: 0, y: y0, w: W, h: y1 - y0 };
-  if (blockNo === 2) return { x: 0, y: y1, w: W, h: y2 - y1 };
-  if (blockNo === 3) return { x: 0, y: y2, w: W, h: y3 - y2 };
-  return { x: 0, y: y3, w: W, h: y4 - y3 };
+  const i = blockNo - 1;
+  return { x: 0, y: i * BLOCK_H, w: W, h: BLOCK_H };
+}
+
+function getSepY(story, baseY, key) {
+  const offRaw = story?.separators?.[key];
+  const off = Number.isFinite(Number(offRaw)) ? Number(offRaw) : 0;
+  const maxOff = 48; // keep it within the violet band area; does NOT change block sizes
+  return baseY + Math.max(-maxOff, Math.min(maxOff, off));
 }
 
 function drawSeparator(ctx, y) {
   ctx.save();
   ctx.fillStyle = PINK;
+  // Full-width separator aligned to the block boundary
   const th = 8;
   ctx.fillRect(0, y - th / 2, W, th);
   ctx.restore();
@@ -83,39 +46,31 @@ function drawDataBlock(ctx, rect, data) {
   ctx.fillStyle = BG;
   ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
 
-  // Clip to the violet rectangle area so text never spills into other blocks.
-  ctx.beginPath();
-  ctx.rect(rect.x, rect.y, rect.w, rect.h);
-  ctx.clip();
-
+  // === Reference-style layout (same visual language as the classic banner) ===
   const cx = rect.x + rect.w / 2;
   const padX = 80;
 
   const model = cleanSpaces(upper(data.model || ""));
   const year = String(data.year || "").trim();
-  const km = data?.kmHidden ? "" : formatKm(data.km);
+  const km = (!data?.kmHidden ? formatKm(data.km) : "");
   const kmLine = km ? `${km}KM` : "";
-
-  const engine = cleanSpaces(String(data.engine || "").trim());
-  const motorTraction = cleanSpaces(String(data.motorTraction || "").trim());
+  // Historia: bloque 3 debe ser simple y 100% legible (como la referencia):
+  // 1) Modelo
+  // 2) "KM  AÑO" en la misma línea
+  // 3) "Caja: Manual" (capitalización normal)
+  const motorLineRaw = cleanSpaces(String(data.motorTraction || data.engine || "").trim());
+  const motorLine = motorLineRaw ? `Motor: ${motorLineRaw}` : "";
 
   const gearboxRaw = cleanSpaces(String(data.gearbox || "").trim());
   const gearbox = gearboxRaw
     ? gearboxRaw.charAt(0).toUpperCase() + gearboxRaw.slice(1).toLowerCase()
     : "";
 
-  const maxW = rect.w - padX * 2;
-
-  // Vertical layout within fixed block height (480)
-  const yTop = rect.y;
-  const yModel = yTop + 135;
-  const yLine2 = yTop + 245;
-  const yLine3 = yTop + 330;
-  const yLine4 = yTop + 405;
-
   // 1) Model (big)
-  const sizeModel = fitText(ctx, model || " ", maxW, 120, 68, "system-ui, sans-serif", "900");
-  textStrokeFill(ctx, model, cx, yModel, {
+  let y = rect.y + 135;
+  const modelMaxW = rect.w - padX * 2;
+  const sizeModel = fitText(ctx, model || " ", modelMaxW, 120, 72, "system-ui, sans-serif", "900");
+  textStrokeFill(ctx, model, cx, y, {
     font: `900 ${sizeModel}px system-ui, -apple-system, Segoe UI, sans-serif`,
     stroke: "rgba(0,0,0,0.85)",
     fill: TEXT,
@@ -127,11 +82,13 @@ function drawDataBlock(ctx, rect, data) {
     baseline: "alphabetic",
   });
 
-  // 2) "KM  AÑO" (if any)
+  // 2) "KM  AÑO" (centrado, misma línea)
+  y = rect.y + 255;
   const kmYearLine = cleanSpaces([kmLine, year].filter(Boolean).join(" "));
   if (kmYearLine) {
-    const size = fitText(ctx, kmYearLine, maxW, 74, 42, "system-ui, sans-serif", "900");
-    textStrokeFill(ctx, kmYearLine, cx, yLine2, {
+    const maxW = rect.w - padX * 2;
+    const size = fitText(ctx, kmYearLine, maxW, 80, 44, "system-ui, sans-serif", "900");
+    textStrokeFill(ctx, kmYearLine, cx, y, {
       font: `900 ${size}px system-ui, -apple-system, Segoe UI, sans-serif`,
       stroke: "rgba(0,0,0,0.80)",
       fill: TEXT,
@@ -144,14 +101,13 @@ function drawDataBlock(ctx, rect, data) {
     });
   }
 
-  // 3) Motor / Tracción (optional)
-  const motorLine = cleanSpaces(
-    [engine ? `Motor: ${engine}` : "", motorTraction ? motorTraction : ""].filter(Boolean).join(" · ")
-  );
+  // 3) Motor (centrado)
+  y = rect.y + 335;
   if (motorLine) {
-    const size = fitText(ctx, motorLine, maxW, 62, 34, "system-ui, sans-serif", "800");
-    textStrokeFill(ctx, motorLine, cx, yLine3, {
-      font: `800 ${size}px system-ui, -apple-system, Segoe UI, sans-serif`,
+    const maxW = rect.w - padX * 2;
+    const size = fitText(ctx, motorLine, maxW, 80, 38, "system-ui, sans-serif", "700");
+    textStrokeFill(ctx, motorLine, cx, y, {
+      font: `700 ${size}px system-ui, -apple-system, Segoe UI, sans-serif`,
       stroke: "rgba(0,0,0,0.78)",
       fill: TEXT,
       lineWidth: Math.max(4, Math.round(size * 0.11)),
@@ -163,12 +119,14 @@ function drawDataBlock(ctx, rect, data) {
     });
   }
 
-  // 4) Caja (optional)
+  // 4) Caja: Manual (centrado)
+  y = rect.y + 405;
   if (gearbox) {
     const line = `Caja: ${gearbox}`;
-    const size = fitText(ctx, line, maxW, 58, 32, "system-ui, sans-serif", "750");
-    textStrokeFill(ctx, line, cx, yLine4, {
-      font: `750 ${size}px system-ui, -apple-system, Segoe UI, sans-serif`,
+    const maxW = rect.w - padX * 2;
+    const size = fitText(ctx, line, maxW, 80, 40, "system-ui, sans-serif", "700");
+    textStrokeFill(ctx, line, cx, y, {
+      font: `700 ${size}px system-ui, -apple-system, Segoe UI, sans-serif`,
       stroke: "rgba(0,0,0,0.78)",
       fill: TEXT,
       lineWidth: Math.max(4, Math.round(size * 0.11)),
@@ -179,14 +137,16 @@ function drawDataBlock(ctx, rect, data) {
       baseline: "middle",
     });
   }
-
   ctx.restore();
 }
 
 /**
  * story = {
- *  blocks: { 1,2,4 with imgIndex + transform },
- *  separators: { s1, s2, s3 }  // OPTIONAL visual separator positions
+ *  blocks: {
+ *    1: { imgIndex: number, transform: {zoom,panX,panY} },
+ *    3: { ... },
+ *    4: { ... }
+ *  }
  * }
  */
 export function drawHistoria(ctx, images, data, story) {
@@ -199,6 +159,7 @@ export function drawHistoria(ctx, images, data, story) {
   const r3 = blockRect(3);
   const r4 = blockRect(4);
 
+  // Photo blocks are 1, 2 and 4. Block 3 is the ONLY data/text block.
   const b1 = story?.blocks?.[1];
   const b2 = story?.blocks?.[2];
   const b4 = story?.blocks?.[4];
@@ -207,17 +168,24 @@ export function drawHistoria(ctx, images, data, story) {
   const img2 = images?.[b2?.imgIndex]?.img;
   const img4 = images?.[b4?.imgIndex]?.img;
 
-  // Draw blocks first
+  // Layout:
+  // 1) Photo
+  // 2) Photo
+  // 3) Data (ONLY text)
+  // 4) Photo
+  // 1) Photo
+  // 2) Photo
+  // 3) Data (ONLY text)
+  // 4) Photo
   drawPhotoBlock(ctx, img1, r1, b1?.transform);
   drawPhotoBlock(ctx, img2, r2, b2?.transform);
   drawDataBlock(ctx, r3, data);
   drawPhotoBlock(ctx, img4, r4, b4?.transform);
 
-  // Draw separators LAST so they always sit above photos.
-  const seps = getSeparators(story);
-  drawSeparator(ctx, seps.s1);
-  drawSeparator(ctx, seps.s2);
-  drawSeparator(ctx, seps.s3);
+  // Separators ALWAYS ON TOP (so they never get covered by photos)
+  drawSeparator(ctx, getSepY(story, r2.y, "s1"));
+  drawSeparator(ctx, getSepY(story, r3.y, "s2"));
+  drawSeparator(ctx, getSepY(story, r4.y, "s3"));
 }
 
 export async function renderHistoria({ images, data, story }) {
@@ -238,15 +206,8 @@ export async function renderHistoria({ images, data, story }) {
   return { blob, dataURL };
 }
 
-// Block detection stays FIXED (4 equal blocks) so crop rectangles are always stable.
 export function historiaBlockFromY(y) {
-  const yy = Number(y) || 0;
-  if (yy < BLOCK_H) return 1;
-  if (yy < BLOCK_H * 2) return 2;
-  if (yy < BLOCK_H * 3) return 3;
-  return 4;
+  // returns 1..4
+  const b = Math.min(4, Math.max(1, Math.floor(y / BLOCK_H) + 1));
+  return b;
 }
-
-// Export these constants for the editor logic (optional)
-export const HISTORIA_BLOCK_H = BLOCK_H;
-export const HISTORIA_SEP_BAND = SEP_BAND;

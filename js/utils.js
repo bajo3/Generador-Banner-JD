@@ -24,14 +24,13 @@ export function getFileBaseName(file) {
 }
 
 export function formatKm(km) {
+  // Avoid Number("") => 0 (would render 0KM).
   if (km === null || km === undefined) return "";
-  const s = String(km).trim();
-  // IMPORTANT: Number("") === 0, so we must short-circuit empties.
-  if (!s) return "";
-  const n = Number(s);
-  if (!Number.isFinite(n)) return "";
-  // Only render valid positive values for vehicle mileage.
-  if (n <= 0) return "";
+  const raw = String(km).trim();
+  if (!raw) return "";
+  const n = Number(raw);
+  // Only format if it's a valid positive number.
+  if (!Number.isFinite(n) || n <= 0) return "";
   return n.toLocaleString("es-AR");
 }
 
