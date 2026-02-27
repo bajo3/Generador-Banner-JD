@@ -258,9 +258,36 @@ function rerenderAll() {
 
 function ensureStoryDefaults() {
   if (state.story && state.story.blocks) {
-    if (!state.story.splits) {
-      state.story.splits = { s1: 480, s2: 960, s3: 1440 };
+    // Backward compat: if old 'splits' exist, treat them as 'separators' (visual only).
+    if (!state.story.separators && state.story.separators) {
+      state.story.separators = { ...state.story.separators };
+      delete state.story.separators;
     }
+    if (!state.story.separators) {
+      state.story.separators = { s1: 480, s2: 960, s3: 1440 };
+    }
+    return;
+  }
+  const total = state.images.length;
+  const pick = (fallback) => (total ? Math.min(total - 1, Math.max(0, fallback)) : 0);
+  state.story = {
+    activeBlock: 1,
+    // Adjustable separator lines (visual only). Blocks remain fixed 4x equal height.
+    separators: {
+      s1: 480,
+      s2: 960,
+      s3: 1440,
+    },
+    blocks: {
+      // Historia: 3 photos distributed in blocks 1, 2 and 4.
+      // Block 3 is DATA ONLY (no photo).
+      1: { imgIndex: pick(0), transform: { zoom: 1, panX: 0, panY: 0 } },
+      2: { imgIndex: pick(1), transform: { zoom: 1, panX: 0, panY: 0 } },
+      4: { imgIndex: pick(2), transform: { zoom: 1, panX: 0, panY: 0 } },
+    },
+  };
+}
+
     return;
   }
   const total = state.images.length;
@@ -579,7 +606,10 @@ function makeStoryPreviewItem() {
   // - The active PHOTO block pan (1/2/4)
   // - The split lines between blocks (s1/s2/s3)
   const SPLIT_HIT_PX = 20;
-  const MIN_BLOCK_H = 260;
+  const SEP_BAND = 120;     // max offset from default line position
+  const SEP_MIN_GAP = 180;  // safety gap between lines
+  const BASE_SEPS = { s1: 480, s2: 960, s3: 1440 };
+
   let dragging = false;
   let dragMode = "none"; // 'photo' | 'split'
   let dragSplitKey = null; // 's1' | 's2' | 's3'
@@ -601,7 +631,7 @@ function makeStoryPreviewItem() {
   };
 
   const nearestSplitKey = (y) => {
-    const s = state.story?.splits;
+    const s = state.story?.separators;
     if (!s) return null;
     const d1 = Math.abs(y - s.s1);
     const d2 = Math.abs(y - s.s2);
@@ -613,23 +643,30 @@ function makeStoryPreviewItem() {
     return "s3";
   };
 
-  const clampSplits = (key, nextValue) => {
-    const H = canvas.height;
-    const s = state.story.splits;
+  const clampSeparators = (key, nextValue) => {
+    const s = state.story.separators;
     const next = { ...s };
-    if (key === "s1") {
-      next.s1 = Math.max(MIN_BLOCK_H, Math.min(nextValue, next.s2 - MIN_BLOCK_H));
-    } else if (key === "s2") {
-      next.s2 = Math.max(next.s1 + MIN_BLOCK_H, Math.min(nextValue, next.s3 - MIN_BLOCK_H));
-    } else if (key === "s3") {
-      next.s3 = Math.max(next.s2 + MIN_BLOCK_H, Math.min(nextValue, H - MIN_BLOCK_H));
-    }
-    // Ensure strict ordering
-    next.s1 = Math.min(next.s1, next.s2 - MIN_BLOCK_H);
-    next.s2 = Math.min(next.s2, next.s3 - MIN_BLOCK_H);
-    next.s3 = Math.min(next.s3, H - MIN_BLOCK_H);
+
+    const clampBand = (v, base) => Math.max(base - SEP_BAND, Math.min(base + SEP_BAND, v));
+
+    if (key === "s1") next.s1 = clampBand(nextValue, BASE_SEPS.s1);
+    if (key === "s2") next.s2 = clampBand(nextValue, BASE_SEPS.s2);
+    if (key === "s3") next.s3 = clampBand(nextValue, BASE_SEPS.s3);
+
+    // Enforce strict ordering with a safe gap
+    next.s1 = Math.min(next.s1, next.s2 - SEP_MIN_GAP);
+    next.s2 = Math.min(next.s2, next.s3 - SEP_MIN_GAP);
+
+    next.s1 = Math.max(40, next.s1);
+    next.s2 = Math.max(next.s1 + SEP_MIN_GAP, next.s2);
+    next.s3 = Math.max(next.s2 + SEP_MIN_GAP, next.s3);
+
+    // Extra clamps to stay within canvas
+    next.s3 = Math.min(canvas.height - 40, next.s3);
+
     return next;
   };
+};
 
   canvas.addEventListener("pointerdown", (e) => {
     ensureStoryDefaults();
@@ -650,7 +687,7 @@ function makeStoryPreviewItem() {
     }
 
     // 2) Otherwise, select the clicked PHOTO block and drag its pan.
-    const b = historiaBlockFromY(y, state.story.splits);
+    const b = historiaBlockFromY(y);
     if (b === 1 || b === 2 || b === 4) {
       state.story.activeBlock = b;
       syncZoom();
@@ -684,9 +721,9 @@ function makeStoryPreviewItem() {
     lastY = e.clientY;
 
     if (dragMode === "split" && dragSplitKey) {
-      const current = state.story.splits[dragSplitKey];
-      const next = clampSplits(dragSplitKey, current + dy);
-      state.story.splits = next;
+      const current = state.story.separators[dragSplitKey];
+      const next = clampSeparators(dragSplitKey, current + dy);
+      state.story.separators = next;
       renderStoryPreview();
       return;
     }
