@@ -324,6 +324,18 @@ function rebuildPreviewsForActiveTemplate() {
     return;
   }
 
+  // Felicitaciones: una sola preview (usa la primera foto si existe)
+  if (state.activeTemplate === "felicitaciones") {
+    const singleItem = state.items[0] || {
+      file: null, img: null, baseName: "", index: 0,
+      transform: { zoom: 1, panX: 0, panY: 0 }, canvas: null, zoomInput: null, nameEl: null,
+    };
+    const node = makePreviewItem(singleItem);
+    previewsContainer.appendChild(node);
+    renderPreview(singleItem);
+    return;
+  }
+
   // Non-historia: one preview per image
   state.items.forEach((item) => {
     const node = makePreviewItem(item);

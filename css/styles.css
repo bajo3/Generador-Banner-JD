@@ -396,9 +396,9 @@ input[type="file"] {
 
 
 /* KM row: input + 'sin kilómetros' */
-.km-row{display:flex;align-items:center;gap:10px}
-.km-row input[type="number"]{flex:1}
-.km-check{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid rgba(255,255,255,0.12);border-radius:10px;background:rgba(255,255,255,0.03);user-select:none}
+.km-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.km-row input[type="number"]{flex:1;min-width:100px}
+.km-check{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid rgba(255,255,255,0.12);border-radius:10px;background:rgba(255,255,255,0.03);user-select:none;white-space:nowrap}
 .km-check span{font-size:13px;opacity:.92}
 
 /* ── Historia story layout ───────────────────────────────────────────────── */
