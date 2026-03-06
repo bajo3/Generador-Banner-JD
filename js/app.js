@@ -89,6 +89,7 @@ function toggleFields() {
     });
   };
   setHidden(".only-felicitaciones", t !== "felicitaciones");
+  setHidden(".no-felicitaciones",   t === "felicitaciones");
   setHidden(".only-vendido", t !== "vendido");
   setHidden(".only-venta", !(t === "venta" || t === "vendido"));
   setHidden(".only-portada", t !== "portada");
