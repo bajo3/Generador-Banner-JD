@@ -195,7 +195,7 @@ function drawPill(ctx, label, value, cx, y, pillW, pillH) {
   ctx.fillStyle = PINK;
   ctx.fill();
 
-  const fs  = Math.round(pillH * 0.37);
+  const fs  = Math.round(pillH * 0.44);  // más grande
   const mid = y + pillH / 2;
 
   // Label
@@ -270,28 +270,26 @@ function drawDataBlock(ctx, rect, data, logoImg) {
   const pillCount = pills.length;
 
   // Fixed zones
-  // Logo zone at bottom: 44px logo + 8 margin + 2 line + 8 gap = 62
   const logoZone  = 62;
-  const topPad    = 14;
-  const innerH    = BLOCK_H - topPad - logoZone; // ~404px
+  const topPad    = 12;
+  const innerH    = BLOCK_H - topPad - logoZone; // ~406px
 
-  // Pills compactas — max 46px cada una
-  const pillH     = pillCount > 0 ? Math.min(46, Math.max(36, Math.floor((innerH * 0.42) / Math.max(1, pillCount)))) : 0;
-  const pillGap   = 7;
+  // Pills son el protagonista — les damos el 58% del espacio interior
+  const pillH     = pillCount > 0 ? Math.min(72, Math.max(48, Math.floor((innerH * 0.58) / Math.max(1, pillCount)))) : 0;
+  const pillGap   = 8;
   const pillsTotal = pillCount * pillH + Math.max(0, pillCount-1) * pillGap;
 
-  // Divider: 18px
-  const divH = 18;
-  // Version: fixed small
-  const verZone = version ? 34 : 0;
-  // Model: toda la zona restante → letra MÁS GRANDE
+  // Divider
+  const divH = 16;
+  // Version chica
+  const verZone = version ? 30 : 0;
+  // Model: zona restante (compacto, no gigante)
   const modelZone = innerH - pillsTotal - divH - verZone;
 
   const tmp = document.createElement("canvas").getContext("2d");
-  // sModelMax ampliado: sin límite artificial, usa toda la zona
-  const sModelMax = Math.max(52, Math.round(modelZone * 0.88));
-  const sModel = model ? fitText(tmp, model, maxW, sModelMax, 52, "system-ui, sans-serif", "900") : 0;
-  const sVer   = version ? fitText(tmp, version, maxW, 32, 18, "system-ui, sans-serif", "600") : 0;
+  const sModelMax = Math.min(110, Math.max(44, Math.round(modelZone * 0.84)));
+  const sModel = model ? fitText(tmp, model, maxW, sModelMax, 44, "system-ui, sans-serif", "900") : 0;
+  const sVer   = version ? fitText(tmp, version, maxW, 28, 16, "system-ui, sans-serif", "600") : 0;
 
   let curY = rect.y + topPad;
 

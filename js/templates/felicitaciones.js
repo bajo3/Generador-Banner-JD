@@ -108,56 +108,45 @@ export function drawFelicitaciones(ctx, img, data, transform = { zoom:1, panX:0,
   ctx.save();
   ctx.fillStyle = BLACK; ctx.fillRect(0,footerY,W,footerH);
   pinkLine(ctx, footerY);
-  // Glow rosado sutil de fondo
   const fg = ctx.createRadialGradient(cx, footerY+footerH*0.45, 0, cx, footerY+footerH*0.45, footerH*1.1);
   fg.addColorStop(0,"rgba(255,0,140,0.09)"); fg.addColorStop(1,"rgba(255,0,140,0)");
   ctx.fillStyle=fg; ctx.fillRect(0,footerY,W,footerH);
   ctx.restore();
 
-  // ── Layout del footer ───────────────────────────────────────────────────
-  // Estructura fija:
-  //  [18px pad]
-  //  ¡FELICITACIONES!   ~74px
-  //  [10px gap]
-  //  "Nombre del cliente"  ~60px (o más chico si es largo)
-  //  [8px gap]
-  //  línea decorativa  ~14px
-  //  [10px gap]
-  //  logo  ~80px
-  //  [10px gap]
-  //  "Gracias por elegirnos"  ~20px
-  //  [12px pad]
-
+  // Solo el nombre de la persona — sin datos del auto
   const name = cleanSpaces(upper(data.clientName || ""));
 
-  // FELICITACIONES — título grande con glow
+  // ── ¡FELICITACIONES! ────────────────────────────────────────────────────
   const titleText = "¡FELICITACIONES!";
-  const titleS = fitText(ctx, titleText, 960, 76, 38, "system-ui, sans-serif", "900");
-  const titleY = footerY + 22 + titleS;
+  const titleS = fitText(ctx, titleText, 960, 72, 36, "system-ui, sans-serif", "900");
+  const titleY = footerY + 20 + titleS;
 
   ctx.save();
   ctx.font = `900 ${titleS}px system-ui, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  // Glow rosa
   ctx.shadowColor = "rgba(255,0,140,0.55)";
-  ctx.shadowBlur  = 30;
+  ctx.shadowBlur  = 28;
   ctx.fillStyle   = PINK;
   ctx.fillText(titleText, cx, titleY);
-  // White fill encima
   ctx.shadowBlur  = 0;
   ctx.fillStyle   = WHITE;
   ctx.fillText(titleText, cx, titleY);
   ctx.restore();
 
-  // Estrellas alrededor del título
   drawSparkles(ctx, cx, titleY - titleS * 0.4, 18, 280);
 
-  // Nombre del cliente
-  let nameBottomY = titleY + 14;
-  if (name) {
-    const nS = fitText(ctx, name, 960, 62, 28, "system-ui, sans-serif", "900");
-    nameBottomY = titleY + 14 + nS;
+  // ── Nombre de la persona (grande, con capitalización title case) ─────────
+  // Mostrar con mayúscula inicial en cada palabra en vez de todo en mayúsculas
+  const namePretty = (data.clientName || "").trim()
+    .split(" ")
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+
+  let afterNameY = titleY + 12;
+  if (namePretty) {
+    const nS = fitText(ctx, namePretty, 960, 66, 28, "system-ui, sans-serif", "900");
+    afterNameY = titleY + 14 + nS;
     ctx.save();
     ctx.font = `900 ${nS}px system-ui, sans-serif`;
     ctx.textAlign = "center";
@@ -166,38 +155,34 @@ export function drawFelicitaciones(ctx, img, data, transform = { zoom:1, panX:0,
     ctx.shadowBlur  = 14;
     ctx.shadowOffsetY = 5;
     ctx.fillStyle = WHITE;
-    ctx.fillText(name, cx, nameBottomY);
+    ctx.fillText(namePretty, cx, afterNameY);
     ctx.restore();
 
-    // Subrayado degradado rosa bajo el nombre
+    // Subrayado rosa bajo el nombre
     ctx.save();
     ctx.font = `900 ${nS}px system-ui, sans-serif`;
-    const nW = Math.min(W-100, ctx.measureText(name).width + 40);
+    const nW = Math.min(W-80, ctx.measureText(namePretty).width + 60);
     const ulGrd = ctx.createLinearGradient(cx-nW/2, 0, cx+nW/2, 0);
     ulGrd.addColorStop(0,"transparent");
     ulGrd.addColorStop(0.5, PINK);
     ulGrd.addColorStop(1,"transparent");
     ctx.fillStyle = ulGrd;
-    ctx.fillRect(cx-nW/2, nameBottomY + 6, nW, 3);
+    ctx.fillRect(cx-nW/2, afterNameY + 7, nW, 3);
     ctx.restore();
   }
 
-  // Logo en el footer (más pequeño, centrado)
-  const logoAreaY = nameBottomY + 18;
-  const logoAreaH = 74;
-  ctx.save();
-  ctx.fillStyle = BLACK; // base negra bajo el logo
+  // ── Logo ─────────────────────────────────────────────────────────────────
+  const logoAreaY = afterNameY + 16;
+  const logoAreaH = 72;
   drawLogo(ctx, logoImg, 0, logoAreaY, W, logoAreaH);
-  ctx.restore();
 
-  // "Gracias por elegirnos" — tagline chiquito
-  const tagY = logoAreaY + logoAreaH + 10;
+  // ── Gracias por elegirnos ────────────────────────────────────────────────
   ctx.save();
-  ctx.font = "500 18px system-ui, sans-serif";
+  ctx.font = "400 17px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  ctx.fillStyle = "rgba(255,255,255,0.42)";
-  ctx.fillText("Gracias por elegirnos", cx, tagY + 18);
+  ctx.fillStyle = "rgba(255,255,255,0.38)";
+  ctx.fillText("Gracias por elegirnos", cx, logoAreaY + logoAreaH + 20);
   ctx.restore();
 }
 
