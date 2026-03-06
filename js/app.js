@@ -675,8 +675,9 @@ function makeStoryPreviewItem() {
     const rect = canvas.getBoundingClientRect();
     const y = ((e.clientY - rect.top) / Math.max(1, rect.height)) * canvas.height;
 
-    // Separator hit test
-    const base = { s1: 480, s2: 960, s3: 1440 };
+    // Separator hit test — base positions match historia.js layout
+    // PHOTO_H=390: s1=390, s2=780, s3=780+750=1530
+    const base = { s1: 390, s2: 780, s3: 1530 };
     const hitPx = 22;
     const seps = state.story.separators || (state.story.separators = { s1: 0, s2: 0, s3: 0 });
 
@@ -719,7 +720,7 @@ function makeStoryPreviewItem() {
     const y = ((e.clientY - rect.top) / Math.max(1, rect.height)) * canvas.height;
 
     if (!dragging) {
-      const base = { s1: 480, s2: 960, s3: 1440 };
+      const base = { s1: 390, s2: 780, s3: 1530 };
       const seps = state.story?.separators || { s1: 0, s2: 0, s3: 0 };
       const hitPx = 22;
       const near =
