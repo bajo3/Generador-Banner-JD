@@ -170,56 +170,50 @@ function drawPhotoBlock(ctx, img, rect, transform, isActive) {
   ctx.restore();
 }
 
-// ── Data pill ─────────────────────────────────────────────────────────────────
-// pillH ajustable para que quepa todo en 480px
-function drawPill(ctx, label, value, cx, y, pillW, pillH) {
+// ── Celda de la grilla: label arriba + valor grande abajo ─────────────────────
+function drawCell(ctx, label, value, x, y, w, h) {
   if (!value) return;
-  const r = Math.round(pillH * 0.28);
-  const x = cx - pillW / 2;
 
   ctx.save();
 
-  rr(ctx, x, y, pillW, pillH, r);
-  const bg = ctx.createLinearGradient(x, y, x + pillW, y);
-  bg.addColorStop(0,   "rgba(255,0,140,0.14)");
-  bg.addColorStop(0.5, "rgba(255,0,140,0.07)");
-  bg.addColorStop(1,   "rgba(255,0,140,0.13)");
+  // Fondo de la celda
+  rr(ctx, x, y, w, h, 14);
+  const bg = ctx.createLinearGradient(x, y, x, y + h);
+  bg.addColorStop(0, "rgba(255,0,140,0.13)");
+  bg.addColorStop(1, "rgba(255,0,140,0.05)");
   ctx.fillStyle = bg;
   ctx.fill();
-  ctx.strokeStyle = "rgba(255,0,140,0.32)";
+  ctx.strokeStyle = "rgba(255,0,140,0.30)";
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  // Accent bar left
-  rr(ctx, x, y, 5, pillH, 2.5);
+  // Línea de acento superior
+  rr(ctx, x, y, w, 4, 2);
   ctx.fillStyle = PINK;
   ctx.fill();
 
-  const fs  = Math.round(pillH * 0.44);  // más grande
-  const mid = y + pillH / 2;
+  const padX = 14;
+  const cx = x + w / 2;
 
-  // Label
-  ctx.font = `700 ${fs}px system-ui, sans-serif`;
+  // Label — chico, rosa, arriba
+  const labelFS = Math.round(h * 0.20);
+  ctx.font = `700 ${labelFS}px system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "rgba(255,0,140,0.85)";
+  ctx.fillText(label.toUpperCase(), cx, y + 10);
+
+  // Value — grande, blanco, centrado verticalmente en la zona inferior
+  const maxValW = w - padX * 2;
+  const valFS = fitText(ctx, value, maxValW, Math.round(h * 0.42), Math.round(h * 0.22), "system-ui, sans-serif", "800");
+  ctx.font = `800 ${valFS}px system-ui, sans-serif`;
+  ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(255,0,140,0.92)";
-  ctx.textAlign = "left";
-  ctx.fillText(label.toUpperCase(), x + 22, mid);
-
-  // Divider
-  const lw = ctx.measureText(label.toUpperCase()).width;
-  const dx = x + 22 + lw + 16;
-  ctx.strokeStyle = "rgba(255,0,140,0.22)";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(dx, y + pillH * 0.22);
-  ctx.lineTo(dx, y + pillH * 0.78);
-  ctx.stroke();
-
-  // Value
-  ctx.font = `800 ${Math.round(fs * 1.08)}px system-ui, sans-serif`;
   ctx.fillStyle = TEXT;
-  ctx.textAlign = "right";
-  ctx.fillText(value, x + pillW - 22, mid);
+  ctx.shadowColor = "rgba(0,0,0,0.40)";
+  ctx.shadowBlur = 6;
+  ctx.fillText(value, cx, y + h * 0.62);
+  ctx.shadowBlur = 0;
 
   ctx.restore();
 }
@@ -233,25 +227,25 @@ function drawDataBlock(ctx, rect, data, logoImg) {
   ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
   const bg = ctx.createRadialGradient(
     rect.x + rect.w/2, rect.y + rect.h/2, 10,
-    rect.x + rect.w/2, rect.y + rect.h/2, rect.w * 0.70
+    rect.x + rect.w/2, rect.y + rect.h/2, rect.w * 0.72
   );
   bg.addColorStop(0, "#101020"); bg.addColorStop(1, "#000");
   ctx.fillStyle = bg;
   ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
 
-  // Edge bleeds
-  const eg1 = ctx.createLinearGradient(0, rect.y, 0, rect.y+70);
+  // Edge bleeds rosados
+  const eg1 = ctx.createLinearGradient(0, rect.y, 0, rect.y+60);
   eg1.addColorStop(0, "rgba(255,0,140,0.13)"); eg1.addColorStop(1, "rgba(255,0,140,0)");
-  ctx.fillStyle = eg1; ctx.fillRect(rect.x, rect.y, rect.w, 70);
-  const eg2 = ctx.createLinearGradient(0, rect.y+rect.h-70, 0, rect.y+rect.h);
+  ctx.fillStyle = eg1; ctx.fillRect(rect.x, rect.y, rect.w, 60);
+  const eg2 = ctx.createLinearGradient(0, rect.y+rect.h-60, 0, rect.y+rect.h);
   eg2.addColorStop(0, "rgba(255,0,140,0)"); eg2.addColorStop(1, "rgba(255,0,140,0.13)");
-  ctx.fillStyle = eg2; ctx.fillRect(rect.x, rect.y+rect.h-70, rect.w, 70);
+  ctx.fillStyle = eg2; ctx.fillRect(rect.x, rect.y+rect.h-60, rect.w, 60);
 
   const cx   = rect.x + rect.w / 2;
-  const padX = 56;
+  const padX = 44;
   const maxW = rect.w - padX * 2;
 
-  // Gather data
+  // ── Datos ──────────────────────────────────────────────────────────────────
   const year     = String(data.year || "").trim();
   const km       = !data?.kmHidden ? formatKm(data.km) : "";
   const kmLine   = km ? `${km} KM` : "";
@@ -261,92 +255,107 @@ function drawDataBlock(ctx, rect, data, logoImg) {
   const model    = cleanSpaces(upper(data.model || ""));
   const version  = cleanSpaces(upper(data.version || ""));
 
-  const pills = [
-    year     ? ["Año",   year]     : null,
-    kmLine   ? ["KM",    kmLine]   : null,
-    motorRaw ? ["Motor", motorRaw] : null,
-    gearbox  ? ["Caja",  gearbox]  : null,
+  // Celdas disponibles — hasta 4 items en grilla 2×2
+  const cellItems = [
+    year     ? ["AÑO",    year]     : null,
+    kmLine   ? ["KM",     kmLine]   : null,
+    motorRaw ? ["MOTOR",  motorRaw] : null,
+    gearbox  ? ["CAJA",   gearbox]  : null,
   ].filter(Boolean);
-  const pillCount = pills.length;
 
-  // Fixed zones
-  const logoZone  = 62;
-  const topPad    = 12;
-  const innerH    = BLOCK_H - topPad - logoZone; // ~406px
+  // ── Layout vertical ────────────────────────────────────────────────────────
+  // Zona logo: 52px abajo
+  // Zona encabezado (modelo + versión): arriba
+  // Zona grilla: resto
 
-  // Pills son el protagonista — les damos el 58% del espacio interior
-  const pillH     = pillCount > 0 ? Math.min(72, Math.max(48, Math.floor((innerH * 0.58) / Math.max(1, pillCount)))) : 0;
-  const pillGap   = 8;
-  const pillsTotal = pillCount * pillH + Math.max(0, pillCount-1) * pillGap;
+  const logoZoneH = 52;
+  const topPad    = 10;
+  const botPad    = logoZoneH + 6;
+  const totalInner = BLOCK_H - topPad - botPad;  // ~410px
 
-  // Divider
-  const divH = 16;
-  // Version chica
-  const verZone = version ? 30 : 0;
-  // Model: zona restante (compacto, no gigante)
-  const modelZone = innerH - pillsTotal - divH - verZone;
-
+  // Modelo grande arriba
   const tmp = document.createElement("canvas").getContext("2d");
-  const sModelMax = Math.min(110, Math.max(44, Math.round(modelZone * 0.84)));
-  const sModel = model ? fitText(tmp, model, maxW, sModelMax, 44, "system-ui, sans-serif", "900") : 0;
-  const sVer   = version ? fitText(tmp, version, maxW, 28, 16, "system-ui, sans-serif", "600") : 0;
+  const sModelMax = Math.min(108, Math.max(48, Math.round(totalInner * 0.28)));
+  const sModel = model ? fitText(tmp, model, maxW, sModelMax, 48, "system-ui, sans-serif", "900") : 0;
+
+  // Versión en pill ancha debajo del modelo
+  const vPillH = version ? Math.round(totalInner * 0.13) : 0;  // ~13% = ~53px
+  const sVer   = version ? fitText(tmp, version, maxW - 60, vPillH * 0.55, 16, "system-ui, sans-serif", "700") : 0;
+
+  // Espacio entre modelo y grilla
+  const gapAfterHeader = 10;
+  const headerH = sModel + (version ? vPillH + 8 : 0) + gapAfterHeader;
+
+  // Grilla ocupa el resto
+  const gridH = totalInner - headerH;
+  const rows  = cellItems.length <= 2 ? 1 : 2;
+  const cols  = cellItems.length === 1 ? 1 : 2;
+  const gap   = 8;
+  const cellW = Math.floor((maxW - gap * (cols - 1)) / cols);
+  const cellH = Math.floor((gridH - gap * (rows - 1)) / rows);
 
   let curY = rect.y + topPad;
 
-  // Model (huge)
+  // ── Modelo ─────────────────────────────────────────────────────────────────
   if (model) {
     textStrokeFill(ctx, model, cx, curY + sModel * 0.84, {
       font: `900 ${sModel}px system-ui, -apple-system, Segoe UI, sans-serif`,
       stroke: "rgba(0,0,0,0.94)",
       fill: TEXT,
-      lineWidth: Math.max(8, Math.round(sModel * 0.12)),
-      shadowColor: "rgba(255,0,140,0.35)",
-      shadowBlur: 28,
-      shadowOffsetY: 10,
+      lineWidth: Math.max(7, Math.round(sModel * 0.11)),
+      shadowColor: "rgba(255,0,140,0.30)",
+      shadowBlur: 22,
+      shadowOffsetY: 8,
       align: "center",
       baseline: "alphabetic",
     });
-    curY += sModel + 8;
+    curY += sModel + 6;
   }
 
-  // Version
-  if (version) {
-    ctx.font = `500 ${sVer}px system-ui, sans-serif`;
+  // ── Versión (pill ancha) ────────────────────────────────────────────────────
+  if (version && vPillH > 0) {
+    const pW = Math.min(maxW, ctx.measureText ? (() => {
+      ctx.font = `700 ${sVer}px system-ui, sans-serif`;
+      return ctx.measureText(version).width + 60;
+    })() : maxW);
+    const px = cx - pW / 2;
+    rr(ctx, px, curY, pW, vPillH, vPillH / 2);
+    const pg = ctx.createLinearGradient(px, curY, px + pW, curY);
+    pg.addColorStop(0, "rgba(255,0,140,0.18)");
+    pg.addColorStop(0.5, "rgba(255,0,140,0.09)");
+    pg.addColorStop(1, "rgba(255,0,140,0.18)");
+    ctx.fillStyle = pg; ctx.fill();
+    ctx.strokeStyle = "rgba(255,0,140,0.35)"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.font = `700 ${sVer}px system-ui, sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillStyle = TEXT_MID;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "alphabetic";
-    ctx.fillText(version, cx, curY + sVer);
-    curY += sVer + 6;
+    ctx.fillText(version, cx, curY + vPillH / 2);
+    curY += vPillH + 8;
   }
 
-  // Divider
-  const divW = 180;
-  const dg = ctx.createLinearGradient(cx-divW/2,0,cx+divW/2,0);
-  dg.addColorStop(0,"transparent"); dg.addColorStop(0.5,PINK); dg.addColorStop(1,"transparent");
-  ctx.fillStyle = dg;
-  ctx.fillRect(cx-divW/2, curY, divW, 2.5);
-  ctx.save();
-  ctx.translate(cx, curY+1.25); ctx.rotate(Math.PI/4);
-  ctx.fillStyle = PINK; ctx.fillRect(-4,-4,8,8);
-  ctx.restore();
-  curY += divH;
+  curY += gapAfterHeader - 4;
 
-  // Pills
-  for (const [label, value] of pills) {
-    drawPill(ctx, label, value, cx, curY, maxW, pillH);
-    curY += pillH + pillGap;
-  }
+  // ── Grilla de celdas ────────────────────────────────────────────────────────
+  cellItems.forEach(([label, value], i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const cx2 = rect.x + padX + col * (cellW + gap);
+    const cy2 = curY + row * (cellH + gap);
+    drawCell(ctx, label, value, cx2, cy2, cellW, cellH);
+  });
 
-  // Logo anchored at bottom
-  const logoH = 44;
-  const logoY = rect.y + BLOCK_H - logoH - 10;
-  const sg = ctx.createLinearGradient(cx-220,0,cx+220,0);
-  sg.addColorStop(0,"transparent"); sg.addColorStop(0.5,"rgba(255,0,140,0.28)"); sg.addColorStop(1,"transparent");
+  // ── Logo al fondo ───────────────────────────────────────────────────────────
+  const logoH = 40;
+  const logoY = rect.y + BLOCK_H - logoH - 8;
+
+  // Separador fino
+  const sg = ctx.createLinearGradient(cx-200,0,cx+200,0);
+  sg.addColorStop(0,"transparent"); sg.addColorStop(0.5,"rgba(255,0,140,0.25)"); sg.addColorStop(1,"transparent");
   ctx.fillStyle = sg;
-  ctx.fillRect(cx-220, logoY-8, 440, 1.5);
+  ctx.fillRect(cx-200, logoY-6, 400, 1.5);
 
   if (logoImg) {
-    const lw = Math.min(maxW * 0.82, logoH * LOGO_RATIO);
+    const lw = Math.min(maxW * 0.78, logoH * LOGO_RATIO);
     const lh = lw / LOGO_RATIO;
     ctx.drawImage(logoImg, cx-lw/2, logoY+(logoH-lh)/2, lw, lh);
   }
