@@ -12,7 +12,12 @@ import {
   renderHistoria,
   renderFelicitaciones,
   historiaBlockFromY,
+  loadLogoOnce,
 } from "./templates/index.js";
+
+// Logo pre-loaded once for live previews
+let _appLogo = null;
+loadLogoOnce().then(img => { _appLogo = img; });
 
 const imagesInput = document.getElementById("images");
 const generateBtn = document.getElementById("generateBtn");
@@ -224,7 +229,7 @@ function renderPreview(item) {
   const data = getFormData();
   const drawer = getDrawer(state.activeTemplate);
   const ctx = item.canvas.getContext("2d");
-  drawer(ctx, item.img, data, item.transform);
+  drawer(ctx, item.img, data, item.transform, _appLogo);
   if (showGuidesChk.checked) {
     drawRuleOfThirds(ctx, item.canvas.width, item.canvas.height, 0.25);
   }
@@ -293,7 +298,7 @@ function renderStoryPreview() {
   ensureStoryDefaults();
   const data = getFormData();
   const ctx = state.storyItem.canvas.getContext("2d");
-  drawHistoria(ctx, state.images, data, state.story);
+  drawHistoria(ctx, state.images, data, state.story, _appLogo);
   if (showGuidesChk.checked) {
     drawRuleOfThirds(ctx, state.storyItem.canvas.width, state.storyItem.canvas.height, 0.25);
   }

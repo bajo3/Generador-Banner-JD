@@ -1,5 +1,8 @@
 import { drawCoverPanZoom, fitText, textStrokeFill } from "../draw.js";
 import { cleanSpaces, formatKm, upper } from "../utils.js";
+import { loadLogoOnce } from "./portadaFicha.js";
+
+const LOGO_RATIO = 801 / 253;
 
 const W = 1080;
 const H = 1920;
@@ -222,48 +225,39 @@ function drawPill(ctx, label, value, cx, y, pillW, pillH) {
 }
 
 // ── Data block ────────────────────────────────────────────────────────────────
-function drawDataBlock(ctx, rect, data) {
+function drawDataBlock(ctx, rect, data, logoImg) {
   ctx.save();
 
   // Background
   ctx.fillStyle = "#000";
   ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-
-  // Radial lift
   const bg = ctx.createRadialGradient(
-    rect.x + rect.w / 2, rect.y + rect.h / 2, 20,
-    rect.x + rect.w / 2, rect.y + rect.h / 2, rect.w * 0.72
+    rect.x + rect.w/2, rect.y + rect.h/2, 10,
+    rect.x + rect.w/2, rect.y + rect.h/2, rect.w * 0.70
   );
-  bg.addColorStop(0, "#111120");
-  bg.addColorStop(1, "#000000");
+  bg.addColorStop(0, "#101020"); bg.addColorStop(1, "#000");
   ctx.fillStyle = bg;
   ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
 
-  // Top/bottom edge bleeds matching separators
-  const eg1 = ctx.createLinearGradient(0, rect.y, 0, rect.y + 80);
-  eg1.addColorStop(0, "rgba(255,0,140,0.12)");
-  eg1.addColorStop(1, "rgba(255,0,140,0)");
-  ctx.fillStyle = eg1;
-  ctx.fillRect(rect.x, rect.y, rect.w, 80);
-
-  const eg2 = ctx.createLinearGradient(0, rect.y + rect.h - 80, 0, rect.y + rect.h);
-  eg2.addColorStop(0, "rgba(255,0,140,0)");
-  eg2.addColorStop(1, "rgba(255,0,140,0.12)");
-  ctx.fillStyle = eg2;
-  ctx.fillRect(rect.x, rect.y + rect.h - 80, rect.w, 80);
+  // Edge bleeds
+  const eg1 = ctx.createLinearGradient(0, rect.y, 0, rect.y+70);
+  eg1.addColorStop(0, "rgba(255,0,140,0.13)"); eg1.addColorStop(1, "rgba(255,0,140,0)");
+  ctx.fillStyle = eg1; ctx.fillRect(rect.x, rect.y, rect.w, 70);
+  const eg2 = ctx.createLinearGradient(0, rect.y+rect.h-70, 0, rect.y+rect.h);
+  eg2.addColorStop(0, "rgba(255,0,140,0)"); eg2.addColorStop(1, "rgba(255,0,140,0.13)");
+  ctx.fillStyle = eg2; ctx.fillRect(rect.x, rect.y+rect.h-70, rect.w, 70);
 
   const cx   = rect.x + rect.w / 2;
-  const padX = 64;
+  const padX = 56;
   const maxW = rect.w - padX * 2;
 
-  // ── Calcular cuántas pills hay para ajustar tamaño dinámicamente ──────────
+  // Gather data
   const year     = String(data.year || "").trim();
   const km       = !data?.kmHidden ? formatKm(data.km) : "";
   const kmLine   = km ? `${km} KM` : "";
   const motorRaw = cleanSpaces(String(data.motorTraction || data.engine || "").trim());
   const gbRaw    = cleanSpaces(String(data.gearbox || "").trim());
   const gearbox  = gbRaw ? gbRaw.charAt(0).toUpperCase() + gbRaw.slice(1).toLowerCase() : "";
-  const brand    = cleanSpaces(upper(data.brand || ""));
   const model    = cleanSpaces(upper(data.model || ""));
   const version  = cleanSpaces(upper(data.version || ""));
 
@@ -273,129 +267,98 @@ function drawDataBlock(ctx, rect, data) {
     motorRaw ? ["Motor", motorRaw] : null,
     gearbox  ? ["Caja",  gearbox]  : null,
   ].filter(Boolean);
-
-  // ── Distribución vertical compacta pero respirada ─────────────────────────
-  // Espacio disponible: 480px (BLOCK_H)
-  // Zonas fijas: top pad 18, brand ~38, model grande, version, divider, pills, footer ~38, bot pad 14
-  // Ajustamos dinámicamente pillH según cantidad de pills
-
-  const topPad    = 18;
-  const botPad    = 14;
-  const brandH    = brand ? 36 : 0;
-  const brandGap  = brand ? 12 : 0;
-
-  // Estimar tamaño de modelo
-  const tmpCanvas = document.createElement("canvas");
-  const tmp = tmpCanvas.getContext("2d");
-  const sModel = fitText(tmp, model || "M", maxW, 96, 44, "system-ui, sans-serif", "900");
-  const modelH = sModel;
-
-  const sVer   = version ? fitText(tmp, version, maxW, 40, 22, "system-ui, sans-serif", "600") : 0;
-  const verH   = version ? sVer + 10 : 0;
-
-  const dividerH = 28; // decorative divider + gap
-
-  const footerH  = 38;
-  const footerGap = 12;
-
-  const fixed = topPad + brandH + brandGap + modelH + 10 + verH + dividerH + footerH + footerGap + botPad;
-  const remaining = BLOCK_H - fixed;
-
   const pillCount = pills.length;
-  const pillH = pillCount > 0
-    ? Math.max(38, Math.min(56, Math.floor((remaining - (pillCount - 1) * 10) / pillCount)))
-    : 0;
-  const pillGap = pillCount > 1
-    ? Math.min(12, Math.floor((remaining - pillH * pillCount) / (pillCount - 1)))
-    : 0;
+
+  // Fixed zones
+  // Logo zone at bottom: 44px logo + 8 margin + 2 line + 8 gap = 62
+  const logoZone  = 62;
+  const topPad    = 14;
+  const innerH    = BLOCK_H - topPad - logoZone; // ~404px
+
+  // Pills compactas — max 46px cada una
+  const pillH     = pillCount > 0 ? Math.min(46, Math.max(36, Math.floor((innerH * 0.42) / Math.max(1, pillCount)))) : 0;
+  const pillGap   = 7;
+  const pillsTotal = pillCount * pillH + Math.max(0, pillCount-1) * pillGap;
+
+  // Divider: 18px
+  const divH = 18;
+  // Version: fixed small
+  const verZone = version ? 34 : 0;
+  // Model: toda la zona restante → letra MÁS GRANDE
+  const modelZone = innerH - pillsTotal - divH - verZone;
+
+  const tmp = document.createElement("canvas").getContext("2d");
+  // sModelMax ampliado: sin límite artificial, usa toda la zona
+  const sModelMax = Math.max(52, Math.round(modelZone * 0.88));
+  const sModel = model ? fitText(tmp, model, maxW, sModelMax, 52, "system-ui, sans-serif", "900") : 0;
+  const sVer   = version ? fitText(tmp, version, maxW, 32, 18, "system-ui, sans-serif", "600") : 0;
 
   let curY = rect.y + topPad;
 
-  // ── Brand pill ──────────────────────────────────────────────────────────────
-  if (brand) {
-    ctx.font = `800 18px system-ui, sans-serif`;
-    const bw = ctx.measureText(brand).width + 44;
-    const bx = cx - bw / 2;
-    rr(ctx, bx, curY, bw, brandH, brandH / 2);
-    ctx.fillStyle = PINK;
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(brand, cx, curY + brandH / 2);
-    curY += brandH + brandGap;
-  }
-
-  // ── Model ────────────────────────────────────────────────────────────────
+  // Model (huge)
   if (model) {
     textStrokeFill(ctx, model, cx, curY + sModel * 0.84, {
       font: `900 ${sModel}px system-ui, -apple-system, Segoe UI, sans-serif`,
-      stroke: "rgba(0,0,0,0.92)",
+      stroke: "rgba(0,0,0,0.94)",
       fill: TEXT,
-      lineWidth: Math.max(6, Math.round(sModel * 0.11)),
-      shadowColor: "rgba(255,0,140,0.28)",
-      shadowBlur: 24,
-      shadowOffsetY: 8,
+      lineWidth: Math.max(8, Math.round(sModel * 0.12)),
+      shadowColor: "rgba(255,0,140,0.35)",
+      shadowBlur: 28,
+      shadowOffsetY: 10,
       align: "center",
       baseline: "alphabetic",
     });
-    curY += modelH + 10;
+    curY += sModel + 8;
   }
 
-  // ── Version ──────────────────────────────────────────────────────────────
+  // Version
   if (version) {
     ctx.font = `500 ${sVer}px system-ui, sans-serif`;
     ctx.fillStyle = TEXT_MID;
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
     ctx.fillText(version, cx, curY + sVer);
-    curY += sVer + 10;
+    curY += sVer + 6;
   }
 
-  // ── Divider ───────────────────────────────────────────────────────────────
+  // Divider
   const divW = 180;
-  const dg = ctx.createLinearGradient(cx - divW / 2, 0, cx + divW / 2, 0);
-  dg.addColorStop(0,   "transparent");
-  dg.addColorStop(0.5, PINK);
-  dg.addColorStop(1,   "transparent");
+  const dg = ctx.createLinearGradient(cx-divW/2,0,cx+divW/2,0);
+  dg.addColorStop(0,"transparent"); dg.addColorStop(0.5,PINK); dg.addColorStop(1,"transparent");
   ctx.fillStyle = dg;
-  ctx.fillRect(cx - divW / 2, curY, divW, 2.5);
-  // Diamond
+  ctx.fillRect(cx-divW/2, curY, divW, 2.5);
   ctx.save();
-  ctx.translate(cx, curY + 1.25);
-  ctx.rotate(Math.PI / 4);
-  ctx.fillStyle = PINK;
-  ctx.fillRect(-4, -4, 8, 8);
+  ctx.translate(cx, curY+1.25); ctx.rotate(Math.PI/4);
+  ctx.fillStyle = PINK; ctx.fillRect(-4,-4,8,8);
   ctx.restore();
-  curY += dividerH;
+  curY += divH;
 
-  // ── Pills ─────────────────────────────────────────────────────────────────
+  // Pills
   for (const [label, value] of pills) {
     drawPill(ctx, label, value, cx, curY, maxW, pillH);
     curY += pillH + pillGap;
   }
 
-  // ── Footer — anclado al fondo del bloque ──────────────────────────────────
-  const fy = rect.y + BLOCK_H - botPad - footerH / 2;
+  // Logo anchored at bottom
+  const logoH = 44;
+  const logoY = rect.y + BLOCK_H - logoH - 10;
+  const sg = ctx.createLinearGradient(cx-220,0,cx+220,0);
+  sg.addColorStop(0,"transparent"); sg.addColorStop(0.5,"rgba(255,0,140,0.28)"); sg.addColorStop(1,"transparent");
+  ctx.fillStyle = sg;
+  ctx.fillRect(cx-220, logoY-8, 440, 1.5);
 
-  const fg = ctx.createLinearGradient(cx - 200, 0, cx + 200, 0);
-  fg.addColorStop(0,   "transparent");
-  fg.addColorStop(0.5, "rgba(255,0,140,0.40)");
-  fg.addColorStop(1,   "transparent");
-  ctx.fillStyle = fg;
-  ctx.fillRect(cx - 200, fy - footerH / 2 - 8, 400, 1.5);
-
-  ctx.font = `700 22px system-ui, sans-serif`;
-  ctx.fillStyle = PINK;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("Jesús Díaz Automotores", cx, fy);
+  if (logoImg) {
+    const lw = Math.min(maxW * 0.82, logoH * LOGO_RATIO);
+    const lh = lw / LOGO_RATIO;
+    ctx.drawImage(logoImg, cx-lw/2, logoY+(logoH-lh)/2, lw, lh);
+  }
 
   ctx.restore();
 }
 
+// ── Main draw
 // ── Main draw ─────────────────────────────────────────────────────────────────
-export function drawHistoria(ctx, images, data, story) {
+export function drawHistoria(ctx, images, data, story, logoImg) {
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, W, H);
@@ -413,7 +376,7 @@ export function drawHistoria(ctx, images, data, story) {
 
   drawPhotoBlock(ctx, images?.[b1?.imgIndex]?.img, r1, b1?.transform, active === 1);
   drawPhotoBlock(ctx, images?.[b2?.imgIndex]?.img, r2, b2?.transform, active === 2);
-  drawDataBlock(ctx, r3, data);
+  drawDataBlock(ctx, r3, data, logoImg);
   drawPhotoBlock(ctx, images?.[b4?.imgIndex]?.img, r4, b4?.transform, active === 4);
 
   drawSeparator(ctx, getSepY(story, "s1"));
@@ -426,7 +389,8 @@ export async function renderHistoria({ images, data, story }) {
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d");
-  drawHistoria(ctx, images, data, story ? { ...story, activeBlock: null } : story);
+  const logoImg = await loadLogoOnce();
+  drawHistoria(ctx, images, data, story ? { ...story, activeBlock: null } : story, logoImg);
 
   const format  = data?.__exportFormat || "jpg";
   const quality = Number(data?.__exportQuality ?? 0.92);
