@@ -491,26 +491,68 @@ function makePreviewItem(item) {
 
 function makeStoryPreviewItem() {
   const wrap = document.createElement("div");
-  wrap.className = "preview-item";
+  wrap.className = "preview-item story-preview-wrap";
 
   const canvas = document.createElement("canvas");
   canvas.width = 1080;
   canvas.height = 1920;
   canvas.className = "preview-canvas preview-canvas-story";
 
+  // ── Controls panel ────────────────────────────────────────────────────────
   const controls = document.createElement("div");
-  controls.className = "preview-controls";
+  controls.className = "story-controls";
 
-  const hint = document.createElement("div");
-  hint.className = "preview-control-label";
-  hint.textContent = "Historia: hacé click en un bloque de FOTO (1/2/4) y luego arrastrá/zoomeá";
+  // Section: block selector tabs
+  const secBlocks = document.createElement("div");
+  secBlocks.className = "story-section";
+
+  const secBlocksTitle = document.createElement("div");
+  secBlocksTitle.className = "story-section-title";
+  secBlocksTitle.textContent = "Bloque activo";
+
+  const blockTabs = document.createElement("div");
+  blockTabs.className = "story-block-tabs";
+
+  const blockBtns = {};
+  [1, 2, 4].forEach((b) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "story-block-btn" + (b === (state.story?.activeBlock ?? 1) ? " is-active" : "");
+    btn.textContent = `Bloque ${b}`;
+    btn.addEventListener("click", () => {
+      state.story.activeBlock = b;
+      updateBlockTabs();
+      syncZoom();
+      renderStoryPreview();
+    });
+    blockBtns[b] = btn;
+    blockTabs.appendChild(btn);
+  });
+
+  const updateBlockTabs = () => {
+    const active = state.story?.activeBlock ?? 1;
+    [1, 2, 4].forEach((b) => {
+      blockBtns[b]?.classList.toggle("is-active", b === active);
+    });
+  };
+
+  secBlocks.appendChild(secBlocksTitle);
+  secBlocks.appendChild(blockTabs);
+
+  // Section: photo selectors
+  const secPhotos = document.createElement("div");
+  secPhotos.className = "story-section";
+
+  const secPhotosTitle = document.createElement("div");
+  secPhotosTitle.className = "story-section-title";
+  secPhotosTitle.textContent = "Fotos";
 
   const makeSelect = (labelText, blockNo) => {
     const row = document.createElement("div");
     row.className = "story-row";
 
     const label = document.createElement("div");
-    label.className = "preview-control-label";
+    label.className = "story-row-label";
     label.textContent = labelText;
 
     const sel = document.createElement("select");
@@ -534,71 +576,108 @@ function makeStoryPreviewItem() {
     return row;
   };
 
-  const row1 = makeSelect("Foto Bloque 1", 1);
-  const row2 = makeSelect("Foto Bloque 2", 2);
-  const row4 = makeSelect("Foto Bloque 4", 4);
+  secPhotos.appendChild(secPhotosTitle);
+  secPhotos.appendChild(makeSelect("Bloque 1", 1));
+  secPhotos.appendChild(makeSelect("Bloque 2", 2));
+  secPhotos.appendChild(makeSelect("Bloque 4", 4));
 
-  const zoomLabel = document.createElement("div");
-  zoomLabel.className = "preview-control-label";
-  zoomLabel.textContent = "Zoom (bloque activo)";
+  // Section: zoom & pan
+  const secZoom = document.createElement("div");
+  secZoom.className = "story-section";
+
+  const secZoomTitle = document.createElement("div");
+  secZoomTitle.className = "story-section-title";
+  secZoomTitle.textContent = "Recorte (bloque activo)";
+
+  const zoomRow = document.createElement("div");
+  zoomRow.className = "story-zoom-row";
+
+  const zoomIcon = document.createElement("span");
+  zoomIcon.className = "story-zoom-icon";
+  zoomIcon.textContent = "🔍";
 
   const zoom = document.createElement("input");
   zoom.type = "range";
   zoom.min = "1";
   zoom.max = String(MAX_ZOOM);
   zoom.step = "0.01";
-  zoom.className = "preview-zoom";
+  zoom.className = "preview-zoom story-zoom-range";
 
-  const applyAll = document.createElement("button");
-  applyAll.type = "button";
-  applyAll.className = "btn-secondary btn-apply-all";
-  applyAll.textContent = "Aplicar a los 3 bloques";
+  const zoomVal = document.createElement("span");
+  zoomVal.className = "story-zoom-val";
+  zoomVal.textContent = "1.00×";
+
+  zoomRow.appendChild(zoomIcon);
+  zoomRow.appendChild(zoom);
+  zoomRow.appendChild(zoomVal);
+
+  const btnRow = document.createElement("div");
+  btnRow.className = "story-btn-row";
 
   const reset = document.createElement("button");
   reset.type = "button";
-  reset.className = "btn-secondary btn-reset";
-  reset.textContent = "Reset (bloque activo)";
+  reset.className = "btn-secondary story-btn";
+  reset.innerHTML = "↺ Reset";
 
+  const applyAll = document.createElement("button");
+  applyAll.type = "button";
+  applyAll.className = "btn-secondary story-btn";
+  applyAll.innerHTML = "⬡ Aplicar a los 3";
+
+  btnRow.appendChild(reset);
+  btnRow.appendChild(applyAll);
+
+  const hint = document.createElement("div");
+  hint.className = "story-hint";
+  hint.innerHTML = "💡 Tocá un bloque de foto en la preview para seleccionarlo, luego arrastrá para encuadrar o usá el scroll para hacer zoom. Los separadores rosas también son arrastrables.";
+
+  secZoom.appendChild(secZoomTitle);
+  secZoom.appendChild(zoomRow);
+  secZoom.appendChild(btnRow);
+
+  controls.appendChild(secBlocks);
+  controls.appendChild(secPhotos);
+  controls.appendChild(secZoom);
+  controls.appendChild(hint);
+
+  // ── File name ─────────────────────────────────────────────────────────────
   const name = document.createElement("div");
   name.className = "preview-name";
 
-  state.storyItem = {
-    canvas,
-    nameEl: name,
-    zoomInput: zoom,
-  };
+  state.storyItem = { canvas, nameEl: name, zoomInput: zoom };
 
+  // ── Sync zoom display ─────────────────────────────────────────────────────
   const getActive = () => state.story.blocks[state.story.activeBlock];
   const syncZoom = () => {
     const b = getActive();
-    zoom.value = String(b?.transform?.zoom ?? 1);
+    const z = b?.transform?.zoom ?? 1;
+    zoom.value = String(z);
+    zoomVal.textContent = z.toFixed(2) + "×";
   };
   syncZoom();
 
-
-  // Dragging affects active block
+  // ── Pointer / drag ────────────────────────────────────────────────────────
   let dragging = false;
-  let dragMode = null; // 'pan' | 'sep'
-  let dragSepKey = null; // 's1'|'s2'|'s3'
+  let dragMode = null;
+  let dragSepKey = null;
   let lastX = 0;
   let lastY = 0;
 
   const getScale = () => {
     const rect = canvas.getBoundingClientRect();
-    const sx = canvas.width / Math.max(1, rect.width);
-    const sy = canvas.height / Math.max(1, rect.height);
-    return { sx, sy };
+    return {
+      sx: canvas.width  / Math.max(1, rect.width),
+      sy: canvas.height / Math.max(1, rect.height),
+    };
   };
 
   canvas.addEventListener("pointerdown", (e) => {
     const rect = canvas.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / Math.max(1, rect.width)) * canvas.width;
     const y = ((e.clientY - rect.top) / Math.max(1, rect.height)) * canvas.height;
 
-    // Separator drag (visual only)
+    // Separator hit test
     const base = { s1: 480, s2: 960, s3: 1440 };
-    const maxOff = 48;
-    const hitPx = 18;
+    const hitPx = 22;
     const seps = state.story.separators || (state.story.separators = { s1: 0, s2: 0, s3: 0 });
 
     const sepKey =
@@ -618,11 +697,13 @@ function makeStoryPreviewItem() {
       return;
     }
 
-    // Otherwise: select block + pan/zoom
+    // Select block + pan
     const b = historiaBlockFromY(y);
     if (b === 1 || b === 2 || b === 4) {
       state.story.activeBlock = b;
+      updateBlockTabs();
       syncZoom();
+      renderStoryPreview();
     }
 
     dragging = true;
@@ -633,16 +714,14 @@ function makeStoryPreviewItem() {
     try { canvas.setPointerCapture(e.pointerId); } catch {}
   });
 
-
   canvas.addEventListener("pointermove", (e) => {
     const rect = canvas.getBoundingClientRect();
     const y = ((e.clientY - rect.top) / Math.max(1, rect.height)) * canvas.height;
 
-    // Hover feedback (when not dragging)
     if (!dragging) {
       const base = { s1: 480, s2: 960, s3: 1440 };
       const seps = state.story?.separators || { s1: 0, s2: 0, s3: 0 };
-      const hitPx = 18;
+      const hitPx = 22;
       const near =
         Math.abs(y - (base.s1 + seps.s1)) <= hitPx ||
         Math.abs(y - (base.s2 + seps.s2)) <= hitPx ||
@@ -660,13 +739,11 @@ function makeStoryPreviewItem() {
     if (dragMode === "sep" && dragSepKey) {
       const maxOff = 48;
       const seps = state.story.separators || (state.story.separators = { s1: 0, s2: 0, s3: 0 });
-      const next = (seps[dragSepKey] || 0) + dy;
-      seps[dragSepKey] = Math.max(-maxOff, Math.min(maxOff, next));
+      seps[dragSepKey] = Math.max(-maxOff, Math.min(maxOff, (seps[dragSepKey] || 0) + dy));
       renderStoryPreview();
       return;
     }
 
-    // Default: pan photo in active block
     const activeBlock = state.story.activeBlock;
     if (!(activeBlock === 1 || activeBlock === 2 || activeBlock === 4)) return;
     const t = state.story.blocks[activeBlock].transform;
@@ -674,7 +751,6 @@ function makeStoryPreviewItem() {
     t.panY += dy;
     renderStoryPreview();
   });
-
 
   const onUp = () => {
     dragging = false;
@@ -686,28 +762,23 @@ function makeStoryPreviewItem() {
   canvas.addEventListener("pointercancel", onUp);
   canvas.addEventListener("pointerleave", onUp);
 
-  canvas.addEventListener(
-    "wheel",
-    (e) => {
-      e.preventDefault();
-      const activeBlock = state.story.activeBlock;
-      if (!(activeBlock === 1 || activeBlock === 2 || activeBlock === 4)) return;
-      const delta = Math.sign(e.deltaY);
-      const step = 0.03;
-      const t = state.story.blocks[activeBlock].transform;
-      const next = t.zoom + (delta < 0 ? step : -step);
-      t.zoom = Math.max(1, Math.min(MAX_ZOOM, next));
-      syncZoom();
-      renderStoryPreview();
-    },
-    { passive: false }
-  );
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const activeBlock = state.story.activeBlock;
+    if (!(activeBlock === 1 || activeBlock === 2 || activeBlock === 4)) return;
+    const t = state.story.blocks[activeBlock].transform;
+    const next = t.zoom + (Math.sign(e.deltaY) < 0 ? 0.03 : -0.03);
+    t.zoom = Math.max(1, Math.min(MAX_ZOOM, next));
+    syncZoom();
+    renderStoryPreview();
+  }, { passive: false });
 
   zoom.addEventListener("input", () => {
     const activeBlock = state.story.activeBlock;
     if (!(activeBlock === 1 || activeBlock === 2 || activeBlock === 4)) return;
     const t = state.story.blocks[activeBlock].transform;
     t.zoom = Math.max(1, Math.min(MAX_ZOOM, Number(zoom.value) || 1));
+    zoomVal.textContent = t.zoom.toFixed(2) + "×";
     renderStoryPreview();
   });
 
@@ -715,9 +786,7 @@ function makeStoryPreviewItem() {
     const activeBlock = state.story.activeBlock;
     if (!(activeBlock === 1 || activeBlock === 2 || activeBlock === 4)) return;
     const t = state.story.blocks[activeBlock].transform;
-    t.zoom = 1;
-    t.panX = 0;
-    t.panY = 0;
+    t.zoom = 1; t.panX = 0; t.panY = 0;
     syncZoom();
     renderStoryPreview();
   });
@@ -734,15 +803,6 @@ function makeStoryPreviewItem() {
     syncZoom();
     renderStoryPreview();
   });
-
-  controls.appendChild(hint);
-  controls.appendChild(row1);
-  controls.appendChild(row2);
-  controls.appendChild(row4);
-  controls.appendChild(zoomLabel);
-  controls.appendChild(zoom);
-  controls.appendChild(applyAll);
-  controls.appendChild(reset);
 
   wrap.appendChild(canvas);
   wrap.appendChild(controls);
