@@ -168,20 +168,26 @@ input[type="file"] {
 
 .previews {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
-  margin-top: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
 }
 
 .preview-item {
-  background: #101019;
-  border-radius: 12px;
+  background: #0d0d14;
+  border-radius: 14px;
   padding: 8px;
-  border: 1px solid #26263a;
+  border: 1px solid rgba(255,255,255,0.08);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.preview-item:hover {
+  border-color: rgba(255,0,140,0.28);
+  box-shadow: 0 0 0 1px rgba(255,0,140,0.12);
 }
 
 .preview-item img {
@@ -191,9 +197,10 @@ input[type="file"] {
 }
 
 .preview-name {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   word-break: break-all;
-  color: #d8d8e6;
+  color: #9898b4;
+  padding: 2px 2px 4px;
 }
 
 .footer-note {

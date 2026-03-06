@@ -3,203 +3,315 @@ import { formatKm, upper, cleanSpaces } from "../utils.js";
 
 const W = 1080;
 const H = 1080;
+const PINK  = "#ff008c";
+const BLACK = "#000000";
+const WHITE = "#ffffff";
 
-const BLUE = "rgba(0, 92, 255, 0.90)";
-const BLUE_PILL = "rgba(0, 92, 255, 0.86)";
-const FOOTER_TEXT = "#ffffff";
+function rr(ctx, x, y, w, h, r) {
+  const rad = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rad, y);
+  ctx.lineTo(x + w - rad, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + rad);
+  ctx.lineTo(x + w, y + h - rad);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - rad, y + h);
+  ctx.lineTo(x + rad, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + rad);
+  ctx.quadraticCurveTo(x, y, x + rad, y);
+  ctx.closePath();
+}
 
-const BRAND_LEFT = "Jesus Diaz Automotores";
-const BRAND_RIGHT = "Jesus Diaz Automotores";
-const PHONE = "2494 587046";
+function drawHeader(ctx) {
+  const h = 168;
+  ctx.save();
+  ctx.fillStyle = BLACK;
+  ctx.fillRect(0, 0, W, h);
+
+  const cx = W / 2;
+
+  // "Jesús" light + "DIAZ" bold pink — split text
+  ctx.font = "300 56px system-ui, sans-serif";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = WHITE;
+  ctx.fillText("Jesús ", cx, 84);
+
+  ctx.font = "900 64px system-ui, sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillStyle = PINK;
+  ctx.fillText("DIAZ", cx, 84);
+
+  // Underline under DIAZ
+  const dw = ctx.measureText("DIAZ").width;
+  ctx.fillStyle = PINK;
+  ctx.fillRect(cx, 90, dw, 4);
+
+  // AUTOMOTORES
+  ctx.font = "500 19px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(255,255,255,0.65)";
+  ctx.fillText("A U T O M O T O R E S", cx, 126);
+
+  // Tagline
+  ctx.font = "700 13px system-ui, sans-serif";
+  ctx.fillStyle = "rgba(255,0,140,0.70)";
+  ctx.fillText("· TU MEJOR ELECCIÓN ·", cx, 150);
+
+  // Bottom separator line + glow
+  const ly = h - 5;
+  const lg = ctx.createLinearGradient(0, 0, W, 0);
+  lg.addColorStop(0,    "rgba(255,0,140,0.3)");
+  lg.addColorStop(0.15, PINK);
+  lg.addColorStop(0.85, PINK);
+  lg.addColorStop(1,    "rgba(255,0,140,0.3)");
+  ctx.fillStyle = lg;
+  ctx.fillRect(0, ly, W, 5);
+  // Glow
+  const gg = ctx.createLinearGradient(0, ly + 5, 0, ly + 36);
+  gg.addColorStop(0, "rgba(255,0,140,0.18)");
+  gg.addColorStop(1, "rgba(255,0,140,0)");
+  ctx.fillStyle = gg;
+  ctx.fillRect(0, ly + 5, W, 31);
+
+  ctx.restore();
+  return h;
+}
+
+function drawBottomBar(ctx, footerY) {
+  const barH = H - footerY;
+  ctx.save();
+
+  ctx.fillStyle = BLACK;
+  ctx.fillRect(0, footerY, W, barH);
+
+  // Top line
+  const lg = ctx.createLinearGradient(0, 0, W, 0);
+  lg.addColorStop(0,    "rgba(255,0,140,0.3)");
+  lg.addColorStop(0.12, PINK);
+  lg.addColorStop(0.88, PINK);
+  lg.addColorStop(1,    "rgba(255,0,140,0.3)");
+  ctx.fillStyle = lg;
+  ctx.fillRect(0, footerY, W, 5);
+
+  // Glow
+  const gg = ctx.createLinearGradient(0, footerY + 5, 0, footerY + 38);
+  gg.addColorStop(0, "rgba(255,0,140,0.16)");
+  gg.addColorStop(1, "rgba(255,0,140,0)");
+  ctx.fillStyle = gg;
+  ctx.fillRect(0, footerY + 5, W, 33);
+
+  ctx.restore();
+}
 
 export function drawPortadaFicha(ctx, img, data, transform = { zoom: 1, panX: 0, panY: 0 }) {
-// Photo full
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, W, H);
-  drawCoverPanZoom(ctx, img, 0, 0, W, H, transform);
 
-  // subtle vignette for readability (very soft)
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, "rgba(0,0,0,0.15)");
-  grad.addColorStop(0.55, "rgba(0,0,0,0.06)");
-  grad.addColorStop(1, "rgba(0,0,0,0.25)");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
+  const headerH = 168;
+  const footerH = 220;
+  const footerY = H - footerH;
+  const photoY  = headerH;
+  const photoH  = footerY - headerH;
 
-  // Auto-contrast sampling (0..1): if background is bright, increase stroke + shadow.
-  const lumTitle = avgLuminance(ctx, W * 0.12, 120, W * 0.76, 270);
-  const titleShadowBlur = lumTitle > 0.65 ? 20 : 14;
-  const titleShadowAlpha = lumTitle > 0.65 ? 0.35 : 0.22;
-  const titleStrokeBoost = lumTitle > 0.65 ? 1.25 : 1.0;
-
-  // Title (Marca / Modelo)
-  const brand = upper(data.brand);
-  const model = upper(data.model);
-  const title1 = cleanSpaces(brand);
-  const title2 = cleanSpaces(model);
-
+  // ── Photo ────────────────────────────────────────────────────────────────
   ctx.save();
-  const titleMaxWidth = 1000;
-  let size1 = fitText(ctx, title1 || " ", titleMaxWidth, 92, 56, "system-ui, sans-serif", "900");
-  let size2 = fitText(ctx, title2 || " ", titleMaxWidth, 92, 56, "system-ui, sans-serif", "900");
-
-  textStrokeFill(ctx, title1, W/2, 230, {
-    font: `900 ${size1}px system-ui, -apple-system, Segoe UI, sans-serif`,
-    stroke: "#000",
-    fill: "#fff",
-    lineWidth: Math.max(6, Math.round(size1 * 0.12 * titleStrokeBoost)),
-    shadowColor: `rgba(0,0,0,${titleShadowAlpha})`,
-    shadowBlur: titleShadowBlur,
-    shadowOffsetY: 6,
-    align: "center",
-    baseline: "alphabetic",
-  });
-
-  textStrokeFill(ctx, title2, W/2, 330, {
-    font: `900 ${size2}px system-ui, -apple-system, Segoe UI, sans-serif`,
-    stroke: "#000",
-    fill: "#fff",
-    lineWidth: Math.max(6, Math.round(size2 * 0.12 * titleStrokeBoost)),
-    shadowColor: `rgba(0,0,0,${titleShadowAlpha})`,
-    shadowBlur: titleShadowBlur,
-    shadowOffsetY: 6,
-    align: "center",
-    baseline: "alphabetic",
-  });
-
+  ctx.beginPath();
+  ctx.rect(0, photoY, W, photoH);
+  ctx.clip();
+  if (img) drawCoverPanZoom(ctx, img, 0, photoY, W, photoH, transform);
+  // Subtle top/bottom vignette
+  const vt = ctx.createLinearGradient(0, photoY, 0, photoY + 80);
+  vt.addColorStop(0, "rgba(0,0,0,0.35)");
+  vt.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = vt;
+  ctx.fillRect(0, photoY, W, 80);
+  const vb = ctx.createLinearGradient(0, footerY - 80, 0, footerY);
+  vb.addColorStop(0, "rgba(0,0,0,0)");
+  vb.addColorStop(1, "rgba(0,0,0,0.40)");
+  ctx.fillStyle = vb;
+  ctx.fillRect(0, footerY - 80, W, 80);
   ctx.restore();
 
-  // Blue pill (VERSION) centered in the middle
-  const version = upper(data.version) || "";
-  const pillText = cleanSpaces(version);
-  const pillY = Math.round(H * 0.50);
-  const pillPadX = 40;
-  const pillPadY = 18;
+  // ── Header ───────────────────────────────────────────────────────────────
+  drawHeader(ctx);
 
-  ctx.save();
-  ctx.font = "900 54px system-ui, -apple-system, Segoe UI, sans-serif";
-  const pillTextWidth = ctx.measureText(pillText || " ").width;
-  const pillW = Math.min(W - 160, pillTextWidth + pillPadX * 2);
-  const pillH = 84;
-  const pillX = (W - pillW) / 2;
-  const pillYTop = pillY - pillH/2;
+  // ── Bottom bar ───────────────────────────────────────────────────────────
+  drawBottomBar(ctx, footerY);
 
-  // rounded rect
-  roundRect(ctx, pillX, pillYTop, pillW, pillH, 18);
-  ctx.fillStyle = BLUE_PILL;
-  ctx.fill();
+  // ── Photo overlay: brand + model ─────────────────────────────────────────
+  const cx = W / 2;
+  const brand  = cleanSpaces(upper(data.brand || ""));
+  const model  = cleanSpaces(upper(data.model || ""));
 
-  // pill text
-  ctx.fillStyle = "#fff";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(pillText, W/2, pillY);
-  ctx.restore();
+  // Measure background brightness for adaptive contrast
+  const lum = img ? avgLuminance(ctx, W * 0.1, photoY + photoH * 0.08, W * 0.8, photoH * 0.32) : 0.3;
+  const strokeBoost = lum > 0.60 ? 1.3 : 1.0;
+  const shadowA     = lum > 0.60 ? 0.55 : 0.30;
 
-  // Details below pill
-  const kmTxt = formatKm(data.km);
-  const kmLine = kmTxt ? `${kmTxt}KM` : "";
-  const gearbox = upper(data.gearbox);
-  const year = String(data.year || "").trim();
-  const extra1 = cleanSpaces(data.extra1);
-  const extra2 = cleanSpaces(data.extra2);
+  let ty = photoY + 64;
 
-  let y = pillY + 110;
+  if (brand) {
+    const s = fitText(ctx, brand, 980, 72, 40, "system-ui, sans-serif", "900");
+    textStrokeFill(ctx, brand, cx, ty, {
+      font: `900 ${s}px system-ui, -apple-system, Segoe UI, sans-serif`,
+      stroke: "rgba(0,0,0,0.88)",
+      fill: WHITE,
+      lineWidth: Math.max(5, Math.round(s * 0.11 * strokeBoost)),
+      shadowColor: `rgba(0,0,0,${shadowA})`,
+      shadowBlur: 18,
+      shadowOffsetY: 6,
+      align: "center",
+      baseline: "alphabetic",
+    });
+    ty += s + 6;
+  }
 
-  // Auto-contrast for details zone
-  const lumDetails = avgLuminance(ctx, W * 0.18, pillY + 40, W * 0.64, 320);
-  const detailShadowAlpha = lumDetails > 0.65 ? 0.55 : 0.35;
-  const detailShadowBlur = lumDetails > 0.65 ? 18 : 12;
+  if (model) {
+    const s = fitText(ctx, model, 980, 96, 48, "system-ui, sans-serif", "900");
+    textStrokeFill(ctx, model, cx, ty, {
+      font: `900 ${s}px system-ui, -apple-system, Segoe UI, sans-serif`,
+      stroke: "rgba(0,0,0,0.88)",
+      fill: WHITE,
+      lineWidth: Math.max(6, Math.round(s * 0.12 * strokeBoost)),
+      shadowColor: `rgba(0,0,0,${shadowA})`,
+      shadowBlur: 20,
+      shadowOffsetY: 7,
+      align: "center",
+      baseline: "alphabetic",
+    });
+    ty += s + 10;
+  }
 
-  // big KM
-  if (kmLine) {
-    ctx.save();
-    ctx.font = "900 74px system-ui, -apple-system, Segoe UI, sans-serif";
-    ctx.fillStyle = "#fff";
+  // ── Version pill ─────────────────────────────────────────────────────────
+  const version = cleanSpaces(upper(data.version || ""));
+  if (version) {
+    const pH  = 72;
+    ctx.font = `800 44px system-ui, sans-serif`;
+    const pW = Math.min(W - 120, ctx.measureText(version).width + 72);
+    const px = cx - pW / 2;
+    const py = ty + 14;
+    rr(ctx, px, py, pW, pH, pH / 2);
+    // Gradient fill
+    const pg = ctx.createLinearGradient(px, py, px + pW, py + pH);
+    pg.addColorStop(0, "rgba(255,0,140,0.90)");
+    pg.addColorStop(1, "rgba(200,0,100,0.90)");
+    ctx.fillStyle = pg;
+    ctx.fill();
+    // Highlight top edge
+    rr(ctx, px, py, pW, pH, pH / 2);
+    ctx.strokeStyle = "rgba(255,255,255,0.20)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = WHITE;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.shadowColor = `rgba(0,0,0,${detailShadowAlpha})`;
-    ctx.shadowBlur = detailShadowBlur;
-    ctx.shadowOffsetY = 6;
-    ctx.fillText(kmLine, W/2, y);
-    ctx.restore();
-    y += 90;
+    ctx.shadowColor = "rgba(0,0,0,0.30)";
+    ctx.shadowBlur = 8;
+    ctx.fillText(version, cx, py + pH / 2);
+    ctx.shadowBlur = 0;
+    ty = py + pH + 18;
+  } else {
+    ty += 18;
   }
 
-  // Caja / Año / Extras
-  const lines = [];
-  if (gearbox) lines.push(`Caja: ${gearbox}`);
-  if (year) lines.push(`Año: ${year}`);
-  if (extra1) lines.push(extra1);
-  if (extra2) lines.push(extra2);
+  // ── Detail rows in photo area ─────────────────────────────────────────────
+  const kmTxt = formatKm(data.km);
+  const kmLine = (data.kmHidden || !kmTxt) ? "" : `${kmTxt} KM`;
+  const gearbox = cleanSpaces(upper(data.gearbox || ""));
+  const year    = String(data.year || "").trim();
+  const extra1  = cleanSpaces(data.extra1 || "");
+  const extra2  = cleanSpaces(data.extra2 || "");
 
-  ctx.save();
-  ctx.font = "700 44px system-ui, -apple-system, Segoe UI, sans-serif";
-  ctx.fillStyle = "#fff";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.shadowColor = `rgba(0,0,0,${detailShadowAlpha})`;
-  ctx.shadowBlur = Math.max(10, Math.round(detailShadowBlur * 0.85));
-  ctx.shadowOffsetY = 5;
+  const lumD = img ? avgLuminance(ctx, W * 0.12, ty, W * 0.76, 300) : 0.3;
+  const dSA  = lumD > 0.60 ? 0.60 : 0.38;
+  const dSB  = lumD > 0.60 ? 20  : 12;
 
-  for (const line of lines) {
-    ctx.fillText(line, W/2, y);
-    y += 58;
+  if (kmLine) {
+    const s = fitText(ctx, kmLine, 960, 82, 44, "system-ui, sans-serif", "900");
+    textStrokeFill(ctx, kmLine, cx, ty, {
+      font: `900 ${s}px system-ui, -apple-system, Segoe UI, sans-serif`,
+      stroke: `rgba(0,0,0,${dSA})`,
+      fill: WHITE,
+      lineWidth: Math.max(5, Math.round(s * 0.11 * strokeBoost)),
+      shadowColor: `rgba(0,0,0,${dSA})`,
+      shadowBlur: dSB,
+      shadowOffsetY: 5,
+      align: "center",
+      baseline: "alphabetic",
+    });
+    ty += s + 10;
   }
-  ctx.restore();
 
-  // Bottom blue bar (fixed)
-  const barH = 70;
-  const barY = H - barH;
+  // Secondary info as smaller pills
+  const secondaryItems = [
+    gearbox ? `Caja: ${gearbox}` : "",
+    year    ? `Año: ${year}`     : "",
+    extra1,
+    extra2,
+  ].filter(Boolean);
 
+  for (const item of secondaryItems) {
+    const s = fitText(ctx, item, 900, 48, 26, "system-ui, sans-serif", "700");
+    textStrokeFill(ctx, item, cx, ty, {
+      font: `700 ${s}px system-ui, -apple-system, Segoe UI, sans-serif`,
+      stroke: `rgba(0,0,0,${Math.min(0.85, dSA + 0.1)})`,
+      fill: WHITE,
+      lineWidth: Math.max(4, Math.round(s * 0.11 * strokeBoost)),
+      shadowColor: `rgba(0,0,0,${dSA})`,
+      shadowBlur: Math.round(dSB * 0.85),
+      shadowOffsetY: 4,
+      align: "center",
+      baseline: "alphabetic",
+    });
+    ty += s + 8;
+  }
+
+  // ── Footer content ───────────────────────────────────────────────────────
   ctx.save();
-  ctx.fillStyle = BLUE;
-  ctx.fillRect(0, barY, W, barH);
-
-  ctx.fillStyle = FOOTER_TEXT;
-  ctx.font = "700 26px system-ui, -apple-system, Segoe UI, sans-serif";
-  ctx.textBaseline = "middle";
-
-  // left
-  ctx.textAlign = "left";
-  ctx.fillText(BRAND_LEFT, 24, barY + barH/2);
-
-  // center phone
+  ctx.font = "500 20px system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(PHONE, W/2, barY + barH/2);
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(255,255,255,0.50)";
+  ctx.fillText("A U T O M O T O R E S", cx, footerY + 28);
 
-  // right
+  ctx.font = "900 56px system-ui, sans-serif";
+  ctx.fillStyle = WHITE;
+  ctx.shadowColor = "rgba(0,0,0,0.40)";
+  ctx.shadowBlur = 10;
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText("Jesús ", cx - 4, footerY + 108);
+  ctx.shadowBlur = 0;
+
+  // Measure "Jesús " to offset DIAZ correctly
+  ctx.font = "300 56px system-ui, sans-serif";
+  const jesusW = ctx.measureText("Jesús ").width;
+  ctx.font = "900 56px system-ui, sans-serif";
+  ctx.fillStyle = WHITE;
   ctx.textAlign = "right";
-  ctx.fillText(BRAND_RIGHT, W - 24, barY + barH/2);
+  ctx.fillText("Jesús ", cx, footerY + 108);
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = PINK;
+  ctx.fillText("DIAZ", cx, footerY + 108);
+
+  ctx.font = "600 20px system-ui, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.60)";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText("TU MEJOR ELECCIÓN  ·  2494 587046", cx, footerY + 144);
+
   ctx.restore();
 }
 
 export async function renderPortadaFicha({ img, data, transform = { zoom: 1, panX: 0, panY: 0 } }) {
   const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = H;
+  canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
-
   drawPortadaFicha(ctx, img, data, transform);
-
-  const format = data?.__exportFormat || "jpg";
+  const format  = data?.__exportFormat || "jpg";
   const quality = Number(data?.__exportQuality ?? 0.92);
-  const mime = format === "png" ? "image/png" : "image/jpeg";
-
-  const blob = await new Promise((resolve) =>
-    canvas.toBlob(resolve, mime, mime === "image/jpeg" ? quality : undefined)
-  );
+  const mime    = format === "png" ? "image/png" : "image/jpeg";
+  const blob    = await new Promise(r => canvas.toBlob(r, mime, mime === "image/jpeg" ? quality : undefined));
   const dataURL = canvas.toDataURL(mime, mime === "image/jpeg" ? quality : undefined);
-
   return { blob, dataURL };
-}
-function roundRect(ctx, x, y, w, h, r) {
-  const radius = Math.min(r, w/2, h/2);
-  ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.arcTo(x + w, y, x + w, y + h, radius);
-  ctx.arcTo(x + w, y + h, x, y + h, radius);
-  ctx.arcTo(x, y + h, x, y, radius);
-  ctx.arcTo(x, y, x + w, y, radius);
-  ctx.closePath();
 }
