@@ -36,14 +36,12 @@ function formatKmV2(raw) {
 function formatPrice(raw) {
   if (!raw) return "";
   const s = String(raw).trim();
-  const hasDollar = s.includes("$");
-  const hasUSD    = /usd/i.test(s);
+  const hasUSD = /usd/i.test(s);
   const num = parseInt(s.replace(/[^0-9]/g, ""), 10);
   if (isNaN(num)) return s;
   const formatted = num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  if (hasUSD)    return `USD ${formatted}`;
-  if (hasDollar) return `$${formatted}`;
-  return formatted;
+  if (hasUSD) return `USD ${formatted}`;
+  return `$${formatted}`;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -154,7 +152,6 @@ function drawHeader(ctx) {
   ctx.fillText("· TU MEJOR ELECCIÓN ·", cx, 196);
   ctx.restore();
 
-  pinkBar(ctx, 214, 5);
 }
 
 // ── 4. Info panel ─────────────────────────────────────────────────────────────
@@ -407,7 +404,8 @@ export function drawHistoriaV2(ctx, img, data, transform) {
 
   drawPhoto(ctx, img, transform || {});
   drawOverlays(ctx);
-  pinkBar(ctx, 0, 7);        // top bar only
+  pinkBar(ctx, 0, 7);        // top bar
+  pinkBar(ctx, H - 7, 7);    // bottom bar
   drawHeader(ctx);
   drawInfoPanel(ctx, data);
 }
