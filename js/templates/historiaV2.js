@@ -1,18 +1,52 @@
 /**
  * Historia V2 — Story 1080×1920
- * Replica exacta del diseño de referencia.
  */
 
 import { drawCoverPanZoom, fitText } from "../draw.js";
-import { cleanSpaces, formatKm, upper } from "../utils.js";
+import { cleanSpaces, upper } from "../utils.js";
 
 const W = 1080;
 const H = 1920;
 
 const PINK     = "#ff008c";
 const WHITE    = "#ffffff";
+const WHITE70  = "rgba(255,255,255,0.70)";
 const WHITE55  = "rgba(255,255,255,0.55)";
 const PINK_DIM = "rgba(255,0,140,0.30)";
+
+// ── Format numbers with dots as thousands separator ───────────────────────────
+function formatNum(raw) {
+  if (!raw) return "";
+  const s = String(raw).trim().replace(/\./g, "").replace(/,/g, "");
+  const num = parseFloat(s.replace(/[^0-9.]/g, ""));
+  if (isNaN(num)) return raw.trim();
+  const prefix = s.match(/^[^0-9]*/)?.[0] || "";
+  const suffix = s.match(/[^0-9]*$/)?.[0] || "";
+  const formatted = Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return (prefix + formatted + suffix).trim();
+}
+
+function formatKmV2(raw) {
+  if (!raw) return "";
+  const num = parseInt(String(raw).replace(/\D/g, ""), 10);
+  if (isNaN(num)) return raw.toString().trim();
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+function formatPrice(raw) {
+  if (!raw) return "";
+  const s = String(raw).trim();
+  const hasDollar = s.includes("$");
+  const hasUSD    = /usd/i.test(s);
+  const num = parseInt(s.replace(/[^0-9]/g, ""), 10);
+  if (isNaN(num)) return s;
+  const formatted = num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  if (hasUSD)    return `USD ${formatted}`;
+  if (hasDollar) return `$${formatted}`;
+  return formatted;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function rr(ctx, x, y, w, h, r) {
   const rad = Math.min(r, w / 2, h / 2);
@@ -44,6 +78,8 @@ function pinkBar(ctx, y, h) {
   ctx.fillRect(0, y + h, W, 26);
 }
 
+// ── 1. Photo ──────────────────────────────────────────────────────────────────
+
 function drawPhoto(ctx, img, transform) {
   ctx.fillStyle = "#06060f";
   ctx.fillRect(0, 0, W, H);
@@ -61,6 +97,8 @@ function drawPhoto(ctx, img, transform) {
   ctx.restore();
 }
 
+// ── 2. Gradient overlays ──────────────────────────────────────────────────────
+
 function drawOverlays(ctx) {
   const top = ctx.createLinearGradient(0, 0, 0, 360);
   top.addColorStop(0,    "rgba(10,10,10,1)");
@@ -77,6 +115,8 @@ function drawOverlays(ctx) {
   ctx.fillStyle = bot;
   ctx.fillRect(0, H - 900, W, 900);
 }
+
+// ── 3. Header ─────────────────────────────────────────────────────────────────
 
 function drawHeader(ctx) {
   const cx = W / 2;
@@ -117,27 +157,31 @@ function drawHeader(ctx) {
   pinkBar(ctx, 214, 5);
 }
 
+// ── 4. Info panel ─────────────────────────────────────────────────────────────
+
 function drawInfoPanel(ctx, data) {
   const PAD   = 70;
   const MAX_W = W - PAD * 2;
 
   let y = H - 840;
 
-  // Brand
+  // ── Brand — brighter, with glow ───────────────────────────────────────────
   const brand = upper(cleanSpaces(data.brand || ""));
   if (brand) {
     ctx.save();
-    ctx.font = "300 28px system-ui, sans-serif";
+    ctx.font = "400 30px system-ui, sans-serif";
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = PINK;
+    ctx.fillStyle = "#ff4db8";            // más brillante que el PINK base
+    ctx.shadowColor = "rgba(255,0,140,0.55)";
+    ctx.shadowBlur = 18;
     ctx.letterSpacing = "0.35em";
     ctx.fillText(brand, PAD, y);
     ctx.restore();
-    y += 44;
+    y += 46;
   }
 
-  // Model
+  // ── Model ─────────────────────────────────────────────────────────────────
   const model = upper(cleanSpaces(data.model || ""));
   if (model) {
     const tmp = document.createElement("canvas").getContext("2d");
@@ -155,7 +199,7 @@ function drawInfoPanel(ctx, data) {
     y += fs + 12;
   }
 
-  // Version — plain text
+  // ── Version ───────────────────────────────────────────────────────────────
   const version = upper(cleanSpaces(data.version || ""));
   if (version) {
     const tmp2 = document.createElement("canvas").getContext("2d");
@@ -173,15 +217,15 @@ function drawInfoPanel(ctx, data) {
     y += 16;
   }
 
-  // Red divider
+  // ── Divider ───────────────────────────────────────────────────────────────
   ctx.fillStyle = PINK;
   ctx.fillRect(PAD, y, 80, 3);
   y += 38;
 
-  // Specs row — border-left style
+  // ── Specs row ─────────────────────────────────────────────────────────────
   const year    = String(data.year || "").trim();
-  const km      = !data.kmHidden ? formatKm(data.km) : "";
-  const kmLine  = km ? `${km} km` : "";
+  const rawKm   = !data.kmHidden ? String(data.km || "").trim() : "";
+  const kmLine  = rawKm ? `${formatKmV2(rawKm)} km` : "";
   const motor   = cleanSpaces(String(data.motorTraction || data.engine || "").trim());
   const gbRaw   = cleanSpaces(String(data.gearbox || "").trim());
   const gearbox = gbRaw ? gbRaw.charAt(0).toUpperCase() + gbRaw.slice(1).toLowerCase() : "";
@@ -194,31 +238,31 @@ function drawInfoPanel(ctx, data) {
   ].filter(Boolean);
 
   if (specs.length > 0) {
-    const cols   = specs.length;
-    const colW   = Math.floor(MAX_W / cols);
-    const ROW_H  = 80;
+    const cols  = specs.length;
+    const colW  = Math.floor(MAX_W / cols);
+    const ROW_H = 80;
 
     specs.forEach((s, i) => {
       const x     = PAD + i * colW;
       const textX = i === 0 ? x : x + 18;
 
-      // Left border separator (skip first col)
+      // Separator
       if (i > 0) {
-        ctx.fillStyle = "rgba(255,255,255,0.12)";
+        ctx.fillStyle = "rgba(255,255,255,0.15)";
         ctx.fillRect(x, y + 4, 1.5, ROW_H - 10);
       }
 
-      // Label
+      // Label — brighter
       ctx.save();
       ctx.font = "300 15px system-ui, sans-serif";
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
-      ctx.fillStyle = "rgba(255,255,255,0.38)";
+      ctx.fillStyle = "rgba(255,255,255,0.60)";   // was 0.38
       ctx.letterSpacing = "0.22em";
       ctx.fillText(s.label, textX, y + 6);
       ctx.restore();
 
-      // Value
+      // Value — brighter with subtle glow
       const tmp3 = document.createElement("canvas").getContext("2d");
       const vfs  = fitText(tmp3, s.value, colW - (i === 0 ? 8 : 28), 32, 18, "system-ui, sans-serif", "700");
       ctx.save();
@@ -226,8 +270,8 @@ function drawInfoPanel(ctx, data) {
       ctx.textAlign = "left";
       ctx.textBaseline = "alphabetic";
       ctx.fillStyle = WHITE;
-      ctx.shadowColor = "rgba(0,0,0,0.4)";
-      ctx.shadowBlur = 4;
+      ctx.shadowColor = "rgba(255,255,255,0.25)";
+      ctx.shadowBlur = 8;
       ctx.fillText(s.value, textX, y + ROW_H - 10);
       ctx.restore();
     });
@@ -235,16 +279,12 @@ function drawInfoPanel(ctx, data) {
     y += ROW_H + 30;
   }
 
-  // Price block
-  const precio  = cleanSpaces(String(data.price || "").trim());
-  const credito = cleanSpaces(String(data.priceCredit || "").trim());
+  // ── Price block ───────────────────────────────────────────────────────────
+  const precio  = formatPrice(String(data.price || "").trim());
+  const credito = formatPrice(String(data.priceCredit || "").trim());
 
   if (precio) {
-    const BLOCK_H = credito ? 196 : 164;
-    const BTN_W   = 220;
-    const BTN_H   = 88;
-    const BTN_X   = PAD + MAX_W - BTN_W - 6;
-    const BTN_Y   = y + (BLOCK_H - BTN_H) / 2;
+    const BLOCK_H = credito ? 192 : 160;
 
     // Block bg
     rr(ctx, PAD, y, MAX_W, BLOCK_H, 12);
@@ -257,58 +297,44 @@ function drawInfoPanel(ctx, data) {
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // "PRECIO CONTADO" label
+    // "PRECIO CONTADO" label — brighter
     ctx.save();
     ctx.font = "300 15px system-ui, sans-serif";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.fillStyle = "rgba(255,255,255,0.38)";
+    ctx.fillStyle = "rgba(255,255,255,0.60)";   // was 0.38
     ctx.letterSpacing = "0.30em";
     ctx.fillText("PRECIO CONTADO", PAD + 24, y + 18);
     ctx.restore();
 
-    // Price number
-    const priceMaxW = MAX_W - BTN_W - 56;
+    // Price number — full width, no button
     const tmp4 = document.createElement("canvas").getContext("2d");
-    const pfs  = fitText(tmp4, precio, priceMaxW, 110, 50, "system-ui, sans-serif", "900");
+    const pfs  = fitText(tmp4, precio, MAX_W - 48, 110, 50, "system-ui, sans-serif", "900");
     ctx.save();
     ctx.font = `900 ${pfs}px system-ui, sans-serif`;
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
     ctx.fillStyle = WHITE;
-    ctx.shadowColor = "rgba(255,0,140,0.15)";
-    ctx.shadowBlur = 14;
+    ctx.shadowColor = "rgba(255,255,255,0.20)";
+    ctx.shadowBlur = 16;
     ctx.fillText(precio, PAD + 24, y + 52 + pfs * 0.72);
     ctx.restore();
 
-    // Credit
+    // "Anticipo de:" credit line
     if (credito) {
       ctx.save();
-      ctx.font = "300 24px system-ui, sans-serif";
+      ctx.font = "300 26px system-ui, sans-serif";
       ctx.textAlign = "left";
       ctx.textBaseline = "alphabetic";
-      ctx.fillStyle = "rgba(255,255,255,0.40)";
-      ctx.fillText(`Con crédito: ${credito}`, PAD + 24, y + BLOCK_H - 18);
+      ctx.fillStyle = WHITE70;
+      ctx.fillText(`Anticipo de: ${credito}`, PAD + 24, y + BLOCK_H - 16);
       ctx.restore();
     }
-
-    // "CONSULTAR AHORA" button
-    rr(ctx, BTN_X, BTN_Y, BTN_W, BTN_H, 8);
-    ctx.fillStyle = PINK;
-    ctx.fill();
-    ctx.save();
-    ctx.font = "800 23px system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = WHITE;
-    ctx.fillText("CONSULTAR", BTN_X + BTN_W / 2, BTN_Y + BTN_H * 0.36);
-    ctx.fillText("AHORA",     BTN_X + BTN_W / 2, BTN_Y + BTN_H * 0.68);
-    ctx.restore();
 
     y += BLOCK_H + 28;
   }
 
-  // Footer
+  // ── Footer ────────────────────────────────────────────────────────────────
   const FOOTER_Y = H - 96;
   const MID_Y    = FOOTER_Y + 16;
 
@@ -323,7 +349,7 @@ function drawInfoPanel(ctx, data) {
 
   const ICO = 40;
 
-  // WA circle
+  // WA
   ctx.save();
   ctx.beginPath();
   ctx.arc(PAD + ICO / 2, MID_Y, ICO / 2, 0, Math.PI * 2);
@@ -344,7 +370,7 @@ function drawInfoPanel(ctx, data) {
   ctx.fillText("2494-587046", PAD + ICO + 14, MID_Y);
   ctx.restore();
 
-  // Pin + city
+  // Pin
   const PX = W - PAD - 238;
   ctx.save();
   ctx.beginPath();
@@ -352,7 +378,7 @@ function drawInfoPanel(ctx, data) {
   ctx.fillStyle = PINK;
   ctx.fill();
   ctx.beginPath();
-  ctx.moveTo(PX + 4, MID_Y + 4);
+  ctx.moveTo(PX + 4,  MID_Y + 4);
   ctx.lineTo(PX + 11, MID_Y + 20);
   ctx.lineTo(PX + 18, MID_Y + 4);
   ctx.fillStyle = PINK;
@@ -381,13 +407,10 @@ export function drawHistoriaV2(ctx, img, data, transform) {
 
   drawPhoto(ctx, img, transform || {});
   drawOverlays(ctx);
-  pinkBar(ctx, 0, 7);
-  pinkBar(ctx, H - 7, 7);
+  pinkBar(ctx, 0, 7);        // top bar only
   drawHeader(ctx);
   drawInfoPanel(ctx, data);
 }
-
-// ── Export ────────────────────────────────────────────────────────────────────
 
 export async function renderHistoriaV2({ img, data, transform }) {
   const canvas  = document.createElement("canvas");
