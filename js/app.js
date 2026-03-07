@@ -93,13 +93,14 @@ function toggleFields() {
   };
   setHidden(".only-felicitaciones", t !== "felicitaciones");
   setHidden(".no-felicitaciones",   t === "felicitaciones");
-  setHidden(".only-vendido", t !== "vendido");
-  setHidden(".only-venta", !(t === "venta" || t === "vendido"));
-  setHidden(".only-portada", t !== "portada");
+  setHidden(".only-vendido",    t !== "vendido");
+  setHidden(".only-venta",      !(t === "venta" || t === "vendido"));
+  setHidden(".only-portada",    t !== "portada");
   setHidden(".only-historiaV2", t !== "historiaV2");
-  setHidden(".only-historia", !(t === "historia"));
-  setHidden(".only-gearbox", !(t === "portada" || t === "historia" || t === "historiaV2"));
-  setHidden(".only-jpg", exportFormatSelect.value !== "jpg");
+  setHidden(".only-historia",   t !== "historia");
+  setHidden(".only-motor",      !(t === "historia" || t === "historiaV2"));
+  setHidden(".only-gearbox",    !(t === "portada" || t === "historia" || t === "historiaV2"));
+  setHidden(".only-jpg",        exportFormatSelect.value !== "jpg");
 }
 
 templateTabs.addEventListener("click", (e) => {

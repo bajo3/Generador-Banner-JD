@@ -1,24 +1,18 @@
 /**
  * Historia V2 — Story 1080×1920
- * Foto full-bleed + overlay degradado + header Jesús DIAZ +
- * specs grid 2×2 + bloque precio + footer WhatsApp / ubicación
+ * Replica exacta del diseño de referencia.
  */
 
 import { drawCoverPanZoom, fitText } from "../draw.js";
 import { cleanSpaces, formatKm, upper } from "../utils.js";
-import { loadLogoOnce } from "./portadaFicha.js";
 
 const W = 1080;
 const H = 1920;
 
-const PINK      = "#ff008c";
-const PINK_DIM  = "rgba(255,0,140,0.28)";
-const PINK_BG   = "rgba(255,0,140,0.10)";
-const WHITE     = "#ffffff";
-const WHITE_MID = "rgba(255,255,255,0.55)";
-const WHITE_DIM = "rgba(255,255,255,0.35)";
-
-// ── helpers ───────────────────────────────────────────────────────────────────
+const PINK     = "#ff008c";
+const WHITE    = "#ffffff";
+const WHITE55  = "rgba(255,255,255,0.55)";
+const PINK_DIM = "rgba(255,0,140,0.30)";
 
 function rr(ctx, x, y, w, h, r) {
   const rad = Math.min(r, w / 2, h / 2);
@@ -35,189 +29,156 @@ function rr(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function pinkAccentBar(ctx, y, barH = 7) {
+function pinkBar(ctx, y, h) {
   const lg = ctx.createLinearGradient(0, 0, W, 0);
-  lg.addColorStop(0,    "rgba(255,0,140,0.4)");
+  lg.addColorStop(0,    "rgba(255,0,140,0.40)");
   lg.addColorStop(0.12, PINK);
   lg.addColorStop(0.88, PINK);
-  lg.addColorStop(1,    "rgba(255,0,140,0.4)");
+  lg.addColorStop(1,    "rgba(255,0,140,0.40)");
   ctx.fillStyle = lg;
-  ctx.fillRect(0, y, W, barH);
-  // glow below
-  const gg = ctx.createLinearGradient(0, y + barH, 0, y + barH + 28);
+  ctx.fillRect(0, y, W, h);
+  const gg = ctx.createLinearGradient(0, y + h, 0, y + h + 26);
   gg.addColorStop(0, "rgba(255,0,140,0.18)");
   gg.addColorStop(1, "rgba(255,0,140,0)");
   ctx.fillStyle = gg;
-  ctx.fillRect(0, y + barH, W, 28);
+  ctx.fillRect(0, y + h, W, 26);
 }
 
-// ── Photo (full bleed) ────────────────────────────────────────────────────────
-
 function drawPhoto(ctx, img, transform) {
+  ctx.fillStyle = "#06060f";
+  ctx.fillRect(0, 0, W, H);
   if (!img) {
-    ctx.fillStyle = "#06060f";
-    ctx.fillRect(0, 0, W, H);
-    ctx.font = "700 36px system-ui, sans-serif";
+    ctx.font = "700 36px system-ui";
     ctx.fillStyle = "rgba(255,255,255,0.10)";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("SIN FOTO", W / 2, H / 2);
+    ctx.fillText("SIN FOTO", W / 2, H * 0.38);
     return;
   }
   ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, W, H);
-  ctx.clip();
+  ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
   drawCoverPanZoom(ctx, img, 0, 0, W, H, transform);
   ctx.restore();
 }
 
-// ── Overlays ──────────────────────────────────────────────────────────────────
-
 function drawOverlays(ctx) {
-  // Top fade (for header readability)
-  const top = ctx.createLinearGradient(0, 0, 0, 340);
-  top.addColorStop(0,   "rgba(10,10,10,1)");
-  top.addColorStop(0.6, "rgba(10,10,10,0.72)");
-  top.addColorStop(1,   "rgba(10,10,10,0)");
+  const top = ctx.createLinearGradient(0, 0, 0, 360);
+  top.addColorStop(0,    "rgba(10,10,10,1)");
+  top.addColorStop(0.55, "rgba(10,10,10,0.75)");
+  top.addColorStop(1,    "rgba(10,10,10,0)");
   ctx.fillStyle = top;
-  ctx.fillRect(0, 0, W, 340);
+  ctx.fillRect(0, 0, W, 360);
 
-  // Bottom fade (for info panel readability)
-  const bot = ctx.createLinearGradient(0, H - 860, 0, H);
+  const bot = ctx.createLinearGradient(0, H - 900, 0, H);
   bot.addColorStop(0,    "rgba(10,10,10,0)");
-  bot.addColorStop(0.22, "rgba(10,10,10,0.82)");
-  bot.addColorStop(0.45, "rgba(10,10,10,0.97)");
+  bot.addColorStop(0.18, "rgba(10,10,10,0.80)");
+  bot.addColorStop(0.40, "rgba(10,10,10,0.97)");
   bot.addColorStop(1,    "rgba(10,10,10,1)");
   ctx.fillStyle = bot;
-  ctx.fillRect(0, H - 860, W, 860);
+  ctx.fillRect(0, H - 900, W, 900);
 }
-
-// ── Header ────────────────────────────────────────────────────────────────────
 
 function drawHeader(ctx) {
   const cx = W / 2;
-
-  // "Jesús" blanco light + "DIAZ" rosa bold
   ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.75)";
+  ctx.shadowBlur  = 14;
 
-  // --- Jesús ---
-  ctx.font = "300 62px system-ui, sans-serif";
+  ctx.font = "300 60px system-ui, sans-serif";
   ctx.textAlign = "right";
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = WHITE;
-  ctx.shadowColor = "rgba(0,0,0,0.7)";
-  ctx.shadowBlur = 12;
-  ctx.fillText("Jesús", cx - 6, 120);
+  ctx.fillText("Jesús", cx - 4, 118);
 
-  // --- DIAZ ---
   ctx.font = "900 72px system-ui, sans-serif";
   ctx.textAlign = "left";
   ctx.fillStyle = PINK;
-  ctx.fillText("DIAZ", cx + 6, 120);
+  ctx.fillText("DIAZ", cx + 4, 118);
 
-  // Underline DIAZ
   ctx.shadowBlur = 0;
   ctx.font = "900 72px system-ui, sans-serif";
   const diazW = ctx.measureText("DIAZ").width;
   ctx.fillStyle = PINK;
-  ctx.fillRect(cx + 6, 128, diazW, 4);
+  ctx.fillRect(cx + 4, 126, diazW, 4);
 
-  // AUTOMOTORES
   ctx.font = "600 22px system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.textBaseline = "alphabetic";
   ctx.fillStyle = "rgba(255,255,255,0.65)";
   ctx.shadowColor = "rgba(0,0,0,0.6)";
   ctx.shadowBlur = 8;
-  ctx.fillText("A U T O M O T O R E S", cx, 170);
+  ctx.fillText("A U T O M O T O R E S", cx, 168);
 
-  // Tagline
   ctx.font = "700 18px system-ui, sans-serif";
   ctx.fillStyle = "rgba(255,0,140,0.80)";
   ctx.shadowBlur = 0;
-  ctx.fillText("· TU MEJOR ELECCIÓN ·", cx, 200);
-
+  ctx.fillText("· TU MEJOR ELECCIÓN ·", cx, 196);
   ctx.restore();
 
-  // Pink line below header
-  pinkAccentBar(ctx, 218, 5);
+  pinkBar(ctx, 214, 5);
 }
 
-// ── Info panel ────────────────────────────────────────────────────────────────
-
 function drawInfoPanel(ctx, data) {
-  const padX   = 70;
-  const maxW   = W - padX * 2;
-  const cx     = W / 2;
+  const PAD   = 70;
+  const MAX_W = W - PAD * 2;
 
-  // ── Car brand ─────────────────────────────────────────────────────────────
-  const PANEL_TOP = H - 830;
-  let curY = PANEL_TOP;
+  let y = H - 840;
 
+  // Brand
   const brand = upper(cleanSpaces(data.brand || ""));
   if (brand) {
     ctx.save();
-    ctx.font = "300 30px system-ui, sans-serif";
+    ctx.font = "300 28px system-ui, sans-serif";
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
     ctx.fillStyle = PINK;
-    ctx.letterSpacing = "0.3em";
-    ctx.fillText(brand, padX, curY);
+    ctx.letterSpacing = "0.35em";
+    ctx.fillText(brand, PAD, y);
     ctx.restore();
-    curY += 42;
+    y += 44;
   }
 
-  // ── Model (big) ───────────────────────────────────────────────────────────
+  // Model
   const model = upper(cleanSpaces(data.model || ""));
   if (model) {
     const tmp = document.createElement("canvas").getContext("2d");
-    const fs  = fitText(tmp, model, maxW, 170, 60, "system-ui, sans-serif", "900");
+    const fs  = fitText(tmp, model, MAX_W, 175, 60, "system-ui, sans-serif", "900");
     ctx.save();
     ctx.font = `900 ${fs}px system-ui, -apple-system, sans-serif`;
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
     ctx.fillStyle = WHITE;
-    ctx.shadowColor = "rgba(255,0,140,0.20)";
-    ctx.shadowBlur = 24;
+    ctx.shadowColor = "rgba(255,0,140,0.18)";
+    ctx.shadowBlur = 22;
     ctx.shadowOffsetY = 6;
-    ctx.fillText(model, padX, curY + fs * 0.82);
+    ctx.fillText(model, PAD, y + fs * 0.82);
     ctx.restore();
-    curY += fs + 14;
+    y += fs + 12;
   }
 
-  // ── Version pill ──────────────────────────────────────────────────────────
+  // Version — plain text
   const version = upper(cleanSpaces(data.version || ""));
   if (version) {
     const tmp2 = document.createElement("canvas").getContext("2d");
-    const vfs = fitText(tmp2, version, maxW - 60, 34, 18, "system-ui, sans-serif", "600");
+    const vfs  = fitText(tmp2, version, MAX_W, 34, 18, "system-ui, sans-serif", "300");
     ctx.save();
-    ctx.font = `600 ${vfs}px system-ui, sans-serif`;
-    const vW = Math.min(maxW, ctx.measureText(version).width + 60);
-    const vH = vfs + 22;
-    rr(ctx, padX, curY, vW, vH, vH / 2);
-    const pg = ctx.createLinearGradient(padX, curY, padX + vW, curY);
-    pg.addColorStop(0, "rgba(255,0,140,0.20)");
-    pg.addColorStop(0.5, "rgba(255,0,140,0.09)");
-    pg.addColorStop(1, "rgba(255,0,140,0.20)");
-    ctx.fillStyle = pg; ctx.fill();
-    ctx.strokeStyle = PINK_DIM; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.fillStyle = WHITE_MID;
+    ctx.font = `300 ${vfs}px system-ui, sans-serif`;
     ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.fillText(version, padX + 24, curY + vH / 2);
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = WHITE55;
+    ctx.letterSpacing = "0.12em";
+    ctx.fillText(version, PAD, y);
     ctx.restore();
-    curY += vH + 36;
+    y += vfs + 28;
   } else {
-    curY += 20;
+    y += 16;
   }
 
-  // ── Pink divider ──────────────────────────────────────────────────────────
+  // Red divider
   ctx.fillStyle = PINK;
-  ctx.fillRect(padX, curY, 80, 3);
-  curY += 40;
+  ctx.fillRect(PAD, y, 80, 3);
+  y += 38;
 
-  // ── Specs grid 2×2 ───────────────────────────────────────────────────────
+  // Specs row — border-left style
   const year    = String(data.year || "").trim();
   const km      = !data.kmHidden ? formatKm(data.km) : "";
   const kmLine  = km ? `${km} km` : "";
@@ -225,202 +186,221 @@ function drawInfoPanel(ctx, data) {
   const gbRaw   = cleanSpaces(String(data.gearbox || "").trim());
   const gearbox = gbRaw ? gbRaw.charAt(0).toUpperCase() + gbRaw.slice(1).toLowerCase() : "";
 
-  const cells = [
-    year    ? ["Año",    year]    : null,
-    kmLine  ? ["KM",     kmLine]  : null,
-    motor   ? ["Motor",  motor]   : null,
-    gearbox ? ["Caja",   gearbox] : null,
+  const specs = [
+    year    ? { label: "AÑO",        value: year    } : null,
+    kmLine  ? { label: "KILÓMETROS", value: kmLine  } : null,
+    motor   ? { label: "MOTOR",      value: motor   } : null,
+    gearbox ? { label: "CAJA",       value: gearbox } : null,
   ].filter(Boolean);
 
-  if (cells.length > 0) {
-    const cols   = cells.length <= 2 ? cells.length : 2;
-    const rows   = Math.ceil(cells.length / cols);
-    const gap    = 12;
-    const cellW  = Math.floor((maxW - gap * (cols - 1)) / cols);
-    const cellH  = 110;
+  if (specs.length > 0) {
+    const cols   = specs.length;
+    const colW   = Math.floor(MAX_W / cols);
+    const ROW_H  = 80;
 
-    cells.forEach(([lbl, val], i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const cx2 = padX + col * (cellW + gap);
-      const cy2 = curY + row * (cellH + gap);
+    specs.forEach((s, i) => {
+      const x     = PAD + i * colW;
+      const textX = i === 0 ? x : x + 18;
 
-      // Cell background
-      rr(ctx, cx2, cy2, cellW, cellH, 12);
-      const cbg = ctx.createLinearGradient(cx2, cy2, cx2, cy2 + cellH);
-      cbg.addColorStop(0, "rgba(255,0,140,0.13)");
-      cbg.addColorStop(1, "rgba(255,0,140,0.05)");
-      ctx.fillStyle = cbg; ctx.fill();
-      ctx.strokeStyle = PINK_DIM; ctx.lineWidth = 1.5; ctx.stroke();
-
-      // Pink top accent
-      rr(ctx, cx2, cy2, cellW, 4, 2);
-      ctx.fillStyle = PINK; ctx.fill();
+      // Left border separator (skip first col)
+      if (i > 0) {
+        ctx.fillStyle = "rgba(255,255,255,0.12)";
+        ctx.fillRect(x, y + 4, 1.5, ROW_H - 10);
+      }
 
       // Label
-      ctx.font = "700 16px system-ui, sans-serif";
+      ctx.save();
+      ctx.font = "300 15px system-ui, sans-serif";
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
-      ctx.fillStyle = "rgba(255,0,140,0.85)";
-      ctx.fillText(lbl.toUpperCase(), cx2 + 16, cy2 + 12);
+      ctx.fillStyle = "rgba(255,255,255,0.38)";
+      ctx.letterSpacing = "0.22em";
+      ctx.fillText(s.label, textX, y + 6);
+      ctx.restore();
 
       // Value
       const tmp3 = document.createElement("canvas").getContext("2d");
-      const vfs2 = fitText(tmp3, val, cellW - 32, 38, 20, "system-ui, sans-serif", "800");
-      ctx.font = `800 ${vfs2}px system-ui, sans-serif`;
+      const vfs  = fitText(tmp3, s.value, colW - (i === 0 ? 8 : 28), 32, 18, "system-ui, sans-serif", "700");
+      ctx.save();
+      ctx.font = `700 ${vfs}px system-ui, sans-serif`;
       ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
+      ctx.textBaseline = "alphabetic";
       ctx.fillStyle = WHITE;
       ctx.shadowColor = "rgba(0,0,0,0.4)";
-      ctx.shadowBlur = 5;
-      ctx.fillText(val, cx2 + 16, cy2 + cellH * 0.66);
-      ctx.shadowBlur = 0;
+      ctx.shadowBlur = 4;
+      ctx.fillText(s.value, textX, y + ROW_H - 10);
+      ctx.restore();
     });
 
-    curY += rows * cellH + (rows - 1) * gap + 36;
+    y += ROW_H + 30;
   }
 
-  // ── Price block ───────────────────────────────────────────────────────────
-  const precio = cleanSpaces(String(data.price || "").trim());
+  // Price block
+  const precio  = cleanSpaces(String(data.price || "").trim());
   const credito = cleanSpaces(String(data.priceCredit || "").trim());
 
   if (precio) {
-    const blockH = credito ? 180 : 150;
-    rr(ctx, padX, curY, maxW, blockH, 14);
-    const pbg = ctx.createLinearGradient(padX, curY, padX, curY + blockH);
-    pbg.addColorStop(0, "rgba(255,0,140,0.13)");
-    pbg.addColorStop(1, "rgba(255,0,140,0.05)");
-    ctx.fillStyle = pbg; ctx.fill();
-    ctx.strokeStyle = PINK_DIM; ctx.lineWidth = 1.5; ctx.stroke();
+    const BLOCK_H = credito ? 196 : 164;
+    const BTN_W   = 220;
+    const BTN_H   = 88;
+    const BTN_X   = PAD + MAX_W - BTN_W - 6;
+    const BTN_Y   = y + (BLOCK_H - BTN_H) / 2;
 
-    // Pink badge "PRECIO CONTADO"
-    const badgeW = 260; const badgeH = 34;
-    rr(ctx, padX + 20, curY + 16, badgeW, badgeH, badgeH / 2);
-    ctx.fillStyle = "rgba(255,0,140,0.85)"; ctx.fill();
-    ctx.font = "700 15px system-ui, sans-serif";
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillStyle = WHITE;
-    ctx.fillText("PRECIO CONTADO", padX + 20 + badgeW / 2, curY + 16 + badgeH / 2);
+    // Block bg
+    rr(ctx, PAD, y, MAX_W, BLOCK_H, 12);
+    const pbg = ctx.createLinearGradient(PAD, y, PAD, y + BLOCK_H);
+    pbg.addColorStop(0, "rgba(255,0,140,0.12)");
+    pbg.addColorStop(1, "rgba(255,0,140,0.04)");
+    ctx.fillStyle = pbg;
+    ctx.fill();
+    ctx.strokeStyle = PINK_DIM;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // "PRECIO CONTADO" label
+    ctx.save();
+    ctx.font = "300 15px system-ui, sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = "rgba(255,255,255,0.38)";
+    ctx.letterSpacing = "0.30em";
+    ctx.fillText("PRECIO CONTADO", PAD + 24, y + 18);
+    ctx.restore();
 
     // Price number
+    const priceMaxW = MAX_W - BTN_W - 56;
     const tmp4 = document.createElement("canvas").getContext("2d");
-    const pfs = fitText(tmp4, precio, maxW - 40, 100, 52, "system-ui, sans-serif", "900");
+    const pfs  = fitText(tmp4, precio, priceMaxW, 110, 50, "system-ui, sans-serif", "900");
+    ctx.save();
     ctx.font = `900 ${pfs}px system-ui, sans-serif`;
-    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
     ctx.fillStyle = WHITE;
-    ctx.shadowColor = "rgba(255,0,140,0.18)";
-    ctx.shadowBlur = 16;
-    ctx.fillText(precio, padX + 20, curY + 70 + pfs * 0.72);
-    ctx.shadowBlur = 0;
+    ctx.shadowColor = "rgba(255,0,140,0.15)";
+    ctx.shadowBlur = 14;
+    ctx.fillText(precio, PAD + 24, y + 52 + pfs * 0.72);
+    ctx.restore();
 
-    // Credit price
+    // Credit
     if (credito) {
-      ctx.font = "300 26px system-ui, sans-serif";
-      ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-      ctx.fillStyle = WHITE_MID;
-      ctx.fillText(`Con crédito: ${credito}`, padX + 20, curY + blockH - 18);
+      ctx.save();
+      ctx.font = "300 24px system-ui, sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillStyle = "rgba(255,255,255,0.40)";
+      ctx.fillText(`Con crédito: ${credito}`, PAD + 24, y + BLOCK_H - 18);
+      ctx.restore();
     }
 
-    curY += blockH + 28;
+    // "CONSULTAR AHORA" button
+    rr(ctx, BTN_X, BTN_Y, BTN_W, BTN_H, 8);
+    ctx.fillStyle = PINK;
+    ctx.fill();
+    ctx.save();
+    ctx.font = "800 23px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = WHITE;
+    ctx.fillText("CONSULTAR", BTN_X + BTN_W / 2, BTN_Y + BTN_H * 0.36);
+    ctx.fillText("AHORA",     BTN_X + BTN_W / 2, BTN_Y + BTN_H * 0.68);
+    ctx.restore();
+
+    y += BLOCK_H + 28;
   }
 
-  // ── Footer: WhatsApp + ubicación ──────────────────────────────────────────
-  const FOOTER_Y = H - 100;
+  // Footer
+  const FOOTER_Y = H - 96;
+  const MID_Y    = FOOTER_Y + 16;
 
-  // Thin separator
+  // Separator
   const sg = ctx.createLinearGradient(0, 0, W, 0);
-  sg.addColorStop(0,   "transparent");
-  sg.addColorStop(0.2, "rgba(255,0,140,0.25)");
-  sg.addColorStop(0.8, "rgba(255,0,140,0.25)");
-  sg.addColorStop(1,   "transparent");
+  sg.addColorStop(0,    "transparent");
+  sg.addColorStop(0.15, "rgba(255,255,255,0.10)");
+  sg.addColorStop(0.85, "rgba(255,255,255,0.10)");
+  sg.addColorStop(1,    "transparent");
   ctx.fillStyle = sg;
-  ctx.fillRect(padX, FOOTER_Y - 20, maxW, 1.5);
+  ctx.fillRect(PAD, FOOTER_Y - 22, MAX_W, 1);
 
-  // WhatsApp icon + number
-  _drawWAIcon(ctx, padX, FOOTER_Y + 6, 38);
-  ctx.font = "300 28px system-ui, sans-serif";
-  ctx.textAlign = "left"; ctx.textBaseline = "middle";
-  ctx.fillStyle = WHITE_MID;
-  ctx.fillText("2494-587046", padX + 52, FOOTER_Y + 6 + 19);
+  const ICO = 40;
 
-  // Location pin + city
-  _drawPinIcon(ctx, W - padX - 200, FOOTER_Y + 6, 38);
-  ctx.font = "300 28px system-ui, sans-serif";
-  ctx.textAlign = "left"; ctx.textBaseline = "middle";
-  ctx.fillStyle = WHITE_MID;
-  ctx.fillText("Tandil, Bs As", W - padX - 200 + 46, FOOTER_Y + 6 + 19);
-}
-
-// ── SVG-based icons drawn on canvas ──────────────────────────────────────────
-
-function _drawWAIcon(ctx, x, y, size) {
+  // WA circle
   ctx.save();
-  ctx.translate(x, y);
-  const s = size / 24;
-  ctx.scale(s, s);
-  ctx.fillStyle = "#25D366";
-  // WhatsApp path (simplified)
   ctx.beginPath();
-  ctx.arc(12, 12, 11, 0, Math.PI * 2);
+  ctx.arc(PAD + ICO / 2, MID_Y, ICO / 2, 0, Math.PI * 2);
+  ctx.fillStyle = "#25D366";
   ctx.fill();
-  ctx.fillStyle = "#fff";
-  ctx.font = "bold 14px system-ui";
+  ctx.font = "900 15px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("WA", 12, 12);
+  ctx.fillStyle = WHITE;
+  ctx.fillText("WA", PAD + ICO / 2, MID_Y);
   ctx.restore();
-}
 
-function _drawPinIcon(ctx, x, y, size) {
   ctx.save();
-  ctx.translate(x + size / 2, y);
-  const s = size / 24;
-  ctx.scale(s, s);
+  ctx.font = "300 28px system-ui, sans-serif";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = WHITE55;
+  ctx.fillText("2494-587046", PAD + ICO + 14, MID_Y);
+  ctx.restore();
+
+  // Pin + city
+  const PX = W - PAD - 238;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(PX + 11, MID_Y - 6, 11, 0, Math.PI * 2);
   ctx.fillStyle = PINK;
-  ctx.beginPath();
-  ctx.arc(0, -3, 8, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.moveTo(-5, 2);
-  ctx.lineTo(0, 16);
-  ctx.lineTo(5, 2);
+  ctx.moveTo(PX + 4, MID_Y + 4);
+  ctx.lineTo(PX + 11, MID_Y + 20);
+  ctx.lineTo(PX + 18, MID_Y + 4);
+  ctx.fillStyle = PINK;
   ctx.fill();
-  // white dot center
-  ctx.fillStyle = "#fff";
   ctx.beginPath();
-  ctx.arc(0, -3, 3, 0, Math.PI * 2);
+  ctx.arc(PX + 11, MID_Y - 6, 4, 0, Math.PI * 2);
+  ctx.fillStyle = "#0a0a0a";
   ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.font = "300 28px system-ui, sans-serif";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = WHITE55;
+  ctx.fillText("Tandil, Bs As", PX + 28, MID_Y);
   ctx.restore();
 }
 
-// ── Main draw function ────────────────────────────────────────────────────────
+// ── Main draw ─────────────────────────────────────────────────────────────────
 
-export function drawHistoriaV2(ctx, img, data, transform = {}) {
+export function drawHistoriaV2(ctx, img, data, transform) {
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = "#0a0a0a";
   ctx.fillRect(0, 0, W, H);
 
-  drawPhoto(ctx, img, transform);
+  drawPhoto(ctx, img, transform || {});
   drawOverlays(ctx);
+  pinkBar(ctx, 0, 7);
+  pinkBar(ctx, H - 7, 7);
   drawHeader(ctx);
-  pinkAccentBar(ctx, H - 7, 7); // bottom bar
   drawInfoPanel(ctx, data);
 }
 
-// ── Render to blob (for export) ───────────────────────────────────────────────
+// ── Export ────────────────────────────────────────────────────────────────────
 
 export async function renderHistoriaV2({ img, data, transform }) {
-  const canvas = document.createElement("canvas");
+  const canvas  = document.createElement("canvas");
   canvas.width  = W;
   canvas.height = H;
-  const ctx = canvas.getContext("2d");
+  const ctx     = canvas.getContext("2d");
   drawHistoriaV2(ctx, img, data, transform || {});
 
   const format  = data?.__exportFormat || "jpg";
   const quality = Number(data?.__exportQuality ?? 0.92);
   const mime    = format === "png" ? "image/png" : "image/jpeg";
 
-  const blob = await new Promise(r =>
+  const blob    = await new Promise(r =>
     canvas.toBlob(r, mime, mime === "image/jpeg" ? quality : undefined)
   );
   const dataURL = canvas.toDataURL(mime, mime === "image/jpeg" ? quality : undefined);
