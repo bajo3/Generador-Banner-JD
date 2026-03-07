@@ -57,3 +57,37 @@ export function pad2(n) {
   if (!Number.isFinite(x)) return "00";
   return String(Math.trunc(x)).padStart(2, "0");
 }
+
+// ── Live input formatters ─────────────────────────────────────────────────────
+
+/**
+ * Formats a numeric string with dots as thousands separator.
+ * Preserves cursor-friendliness: only formats when input ends with a digit.
+ * "120000" → "120.000", "1234567" → "1.234.567"
+ */
+export function formatNumInput(raw) {
+  if (!raw) return "";
+  // Strip everything except digits
+  const digits = String(raw).replace(/\D/g, "");
+  if (!digits) return "";
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+/**
+ * Formats a price input, always prefixing "$".
+ * "$11800000" or "11800000" → "$11.800.000"
+ */
+export function formatPriceInput(raw) {
+  if (!raw) return "";
+  const digits = String(raw).replace(/\D/g, "");
+  if (!digits) return "";
+  return "$" + digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+/**
+ * Strips formatting from a km or price string back to a plain number string.
+ * "$11.800.000" → "11800000", "120.000" → "120000"
+ */
+export function stripFormat(raw) {
+  return String(raw || "").replace(/[^0-9]/g, "");
+}

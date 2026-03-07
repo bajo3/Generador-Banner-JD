@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Generador de Banners - Jesús Díaz Automotores</title>
+  <title>Generador de Banners — Jesús Díaz Automotores</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <link rel="stylesheet" href="./css/styles.css" />
@@ -11,26 +11,27 @@
   <div class="app">
     <h1>Generador de Banners <span>Jesús Díaz Automotores</span></h1>
 
+    <!-- ── Tipo de banner ─────────────────────────────────────────────────── -->
     <div class="card">
       <div class="card-title">Tipo de banner</div>
-      <div class="tabs" id="templateTabs" role="tablist" aria-label="Plantillas">
-        <button class="tab is-active" data-template="portada" type="button" role="tab">Portada / Ficha</button>
-        <button class="tab" data-template="venta" type="button" role="tab">Venta</button>
-        <button class="tab" data-template="vendido" type="button" role="tab">Vendido</button>
-        <button class="tab" data-template="historia" type="button" role="tab">Historia (9:16)</button>
-        <button class="tab" data-template="historiaV2" type="button" role="tab">Historia V2 ⭐</button>
-        <button class="tab" data-template="felicitaciones" type="button" role="tab">Felicitaciones</button>
+      <div class="tabs" id="templateTabs" role="tablist">
+        <button class="tab is-active" data-template="portada"        type="button">Portada / Ficha</button>
+        <button class="tab"           data-template="venta"          type="button">Venta</button>
+        <button class="tab"           data-template="vendido"        type="button">Vendido</button>
+        <button class="tab"           data-template="historia"       type="button">Historia (9:16)</button>
+        <button class="tab"           data-template="historiaV2"     type="button">Historia V2 ⭐</button>
+        <button class="tab"           data-template="felicitaciones" type="button">Felicitaciones</button>
       </div>
 
-      <div class="form-grid" style="margin-top: 12px;">
+      <div class="form-grid" style="margin-top:12px">
         <label>
           Plantillas a exportar
           <div class="checkbox-grid">
-            <label class="chk"><input id="exp_portada" type="checkbox" checked /> Portada</label>
-            <label class="chk"><input id="exp_venta" type="checkbox" checked /> Venta</label>
-            <label class="chk"><input id="exp_vendido" type="checkbox" checked /> Vendido</label>
-            <label class="chk"><input id="exp_historia" type="checkbox" checked /> Historia</label>
-            <label class="chk"><input id="exp_historiaV2" type="checkbox" checked /> Historia V2</label>
+            <label class="chk"><input id="exp_portada"        type="checkbox" checked /> Portada</label>
+            <label class="chk"><input id="exp_venta"          type="checkbox" checked /> Venta</label>
+            <label class="chk"><input id="exp_vendido"        type="checkbox" checked /> Vendido</label>
+            <label class="chk"><input id="exp_historia"       type="checkbox" checked /> Historia</label>
+            <label class="chk"><input id="exp_historiaV2"     type="checkbox" checked /> Historia V2</label>
             <label class="chk"><input id="exp_felicitaciones" type="checkbox" checked /> Felicitaciones</label>
           </div>
         </label>
@@ -57,7 +58,7 @@
 
         <label class="only-felicitaciones is-hidden">
           Nombre cliente
-          <input id="clientName" type="text" placeholder="LUCIANO CHAPARRO" />
+          <input id="clientName" type="text" placeholder="Luciano Chaparro" />
         </label>
 
         <label class="only-vendido is-hidden">
@@ -65,22 +66,21 @@
           <input id="soldText" type="text" placeholder="VENDIDO" value="VENDIDO" />
         </label>
       </div>
-      <p class="hint">
-        Elegí una plantilla para previsualizar. El botón <strong>Generar</strong> crea previews y luego exporta en lote lo que tengas tildado.
-      </p>
     </div>
 
+    <!-- ── Datos del vehículo ────────────────────────────────────────────── -->
     <div class="card no-felicitaciones">
       <div class="card-title">Datos del vehículo</div>
       <div class="form-grid">
+
         <label class="only-portada only-historiaV2">
           Marca
-          <input id="brand" type="text" placeholder="Renault" />
+          <input id="brand" type="text" placeholder="Fiat" />
         </label>
 
         <label>
           Modelo
-          <input id="model" type="text" placeholder="Oroch" />
+          <input id="model" type="text" placeholder="Palio" />
         </label>
 
         <label>
@@ -90,7 +90,7 @@
 
         <label>
           Versión
-          <input id="version" type="text" placeholder="Outsider 1.6" />
+          <input id="version" type="text" placeholder="Adventure ELX" />
         </label>
 
         <label class="only-venta only-vendido is-hidden">
@@ -105,13 +105,13 @@
 
         <label class="only-motor is-hidden">
           Motor / Tracción
-          <input id="motorTraction" type="text" placeholder="1.6 / 4x2" />
+          <input id="motorTraction" type="text" placeholder="1.8 / GNC" />
         </label>
 
         <label>
           Kilometraje
           <div class="km-row">
-            <input id="km" type="number" placeholder="170000" />
+            <input id="km" type="text" inputmode="numeric" placeholder="120.000" />
             <div class="km-check">
               <input id="kmHidden" type="checkbox" />
               <span>Sin kilómetros</span>
@@ -126,71 +126,77 @@
 
         <label class="only-portada">
           Extra 2
-          <input id="extra2" type="text" placeholder="Financiación" />
+          <input id="extra2" type="text" placeholder="Financiación disponible" />
         </label>
 
         <label class="only-historiaV2 is-hidden">
           Precio contado
-          <input id="price" type="text" placeholder="$22.000.000" />
+          <input id="price" type="text" inputmode="numeric" placeholder="$13.000.000" />
         </label>
 
         <label class="only-historiaV2 is-hidden">
-          Precio con crédito (opcional)
-          <input id="priceCredit" type="text" placeholder="$22.500.000" />
+          Anticipo (opcional)
+          <input id="priceCredit" type="text" inputmode="numeric" placeholder="$3.000.000" />
         </label>
+
       </div>
-
-      <p class="hint only-portada">
-        En Portada/Ficha, todo se dibuja sobre la foto. El recorte es tipo “cover” (sin deformar).
-      </p>
-
-      <p class="hint only-venta only-vendido is-hidden">
-        En Venta/Vendido, la línea inferior se arma como: <strong>MODELO/AÑO/VERSIÓN/MOTOR/KM</strong>.
-      </p>
     </div>
 
+    <!-- ── Fotos ─────────────────────────────────────────────────────────── -->
     <div class="card">
       <div class="card-title">Fotos del vehículo</div>
       <div class="file-input-wrapper">
-        <label>
-          <span>Seleccionar imágenes</span>
+        <label class="file-label">
+          <span class="file-btn">📂 Seleccionar fotos</span>
           <input id="images" type="file" accept="image/*" multiple />
         </label>
-        <p class="hint">Podés seleccionar varias a la vez.</p>
+        <p class="hint">Las fotos se cargan automáticamente al seleccionarlas. Podés subir varias a la vez.</p>
       </div>
 
       <div class="actions">
         <button id="generateBtn" class="btn-primary">
-          <span>⚙️ Generar</span>
+          <span>⚙️ Recargar</span>
+        </button>
+        <button id="clearFormBtn" class="btn-secondary">
+          🗑 Limpiar formulario
         </button>
         <div class="status" id="statusText">
-          Listo para generar. Subí las fotos y completá los datos.
+          Subí las fotos para empezar.
         </div>
       </div>
 
-      <div class="progress-wrap" aria-hidden="false">
+      <div class="progress-wrap">
         <div class="progress">
-          <div id="progressBar" class="progress-bar" style="width: 0%"></div>
+          <div id="progressBar" class="progress-bar" style="width:0%"></div>
         </div>
         <div id="progressMeta" class="progress-meta"></div>
       </div>
     </div>
 
+    <!-- ── Previews ──────────────────────────────────────────────────────── -->
     <div class="card">
       <div class="card-title">
         <span class="badge"><span class="badge-dot"></span> Banners generados</span>
       </div>
+
+      <!-- Empty state -->
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon">🖼️</div>
+        <div class="empty-text">Seleccioná fotos para ver las previews aquí</div>
+      </div>
+
       <div id="previews" class="previews"></div>
-      <div class="actions" style="margin-top: 14px;">
+
+      <div class="actions" style="margin-top:14px">
         <button id="downloadZipBtn" class="btn-secondary" disabled>
           ⬇️ Descargar ZIP
         </button>
-        <div class="hint">Después de generar, podés <strong>arrastrar la preview</strong> para reencuadrar y ajustar el <strong>zoom</strong>. En <strong>Historia</strong>, hacé click en un bloque de foto (1/2/4) para editar ese recorte.</div>
+        <div class="hint">Arrastrá la preview para reencuadrar · Scroll para zoom · ⬇ Descargar descarga la imagen individual</div>
       </div>
     </div>
 
     <div class="footer-note">
-      Todo el procesamiento se hace en tu navegador. Nada se sube a ningún servidor.
+      Todo el procesamiento se hace en tu navegador. Nada se sube a ningún servidor. · Los datos del formulario se guardan automáticamente.
     </div>
   </div>
 
