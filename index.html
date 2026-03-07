@@ -18,6 +18,7 @@
         <button class="tab" data-template="venta" type="button" role="tab">Venta</button>
         <button class="tab" data-template="vendido" type="button" role="tab">Vendido</button>
         <button class="tab" data-template="historia" type="button" role="tab">Historia (9:16)</button>
+        <button class="tab" data-template="historiaV2" type="button" role="tab">Historia V2 ⭐</button>
         <button class="tab" data-template="felicitaciones" type="button" role="tab">Felicitaciones</button>
       </div>
 
@@ -29,6 +30,7 @@
             <label class="chk"><input id="exp_venta" type="checkbox" checked /> Venta</label>
             <label class="chk"><input id="exp_vendido" type="checkbox" checked /> Vendido</label>
             <label class="chk"><input id="exp_historia" type="checkbox" checked /> Historia</label>
+            <label class="chk"><input id="exp_historiaV2" type="checkbox" checked /> Historia V2</label>
             <label class="chk"><input id="exp_felicitaciones" type="checkbox" checked /> Felicitaciones</label>
           </div>
         </label>
@@ -71,7 +73,7 @@
     <div class="card no-felicitaciones">
       <div class="card-title">Datos del vehículo</div>
       <div class="form-grid">
-        <label class="only-portada">
+        <label class="only-portada only-historiaV2">
           Marca
           <input id="brand" type="text" placeholder="Renault" />
         </label>
@@ -101,7 +103,7 @@
           <input id="gearbox" type="text" placeholder="Manual" />
         </label>
 
-        <label class="only-historia is-hidden">
+        <label class="only-historia only-historiaV2 is-hidden">
           Motor / Tracción
           <input id="motorTraction" type="text" placeholder="1.6 / 4x2" />
         </label>
@@ -125,6 +127,16 @@
         <label class="only-portada">
           Extra 2
           <input id="extra2" type="text" placeholder="Financiación" />
+        </label>
+
+        <label class="only-historiaV2 is-hidden">
+          Precio contado
+          <input id="price" type="text" placeholder="$22.000.000" />
+        </label>
+
+        <label class="only-historiaV2 is-hidden">
+          Precio con crédito (opcional)
+          <input id="priceCredit" type="text" placeholder="$22.500.000" />
         </label>
       </div>
 

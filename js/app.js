@@ -5,11 +5,13 @@ import {
   drawVenta,
   drawVendido,
   drawHistoria,
+  drawHistoriaV2,
   drawFelicitaciones,
   renderPortadaFicha,
   renderVenta,
   renderVendido,
   renderHistoria,
+  renderHistoriaV2,
   renderFelicitaciones,
   historiaBlockFromY,
   loadLogoOnce,
@@ -34,6 +36,7 @@ const expPortada = document.getElementById("exp_portada");
 const expVenta = document.getElementById("exp_venta");
 const expVendido = document.getElementById("exp_vendido");
 const expHistoria = document.getElementById("exp_historia");
+const expHistoriaV2 = document.getElementById("exp_historiaV2");
 const expFelicitaciones = document.getElementById("exp_felicitaciones");
 
 const clientNameInput = document.getElementById("clientName");
@@ -93,8 +96,9 @@ function toggleFields() {
   setHidden(".only-vendido", t !== "vendido");
   setHidden(".only-venta", !(t === "venta" || t === "vendido"));
   setHidden(".only-portada", t !== "portada");
-  setHidden(".only-historia", t !== "historia");
-  setHidden(".only-gearbox", !(t === "portada" || t === "historia"));
+  setHidden(".only-historiaV2", t !== "historiaV2");
+  setHidden(".only-historia", !(t === "historia"));
+  setHidden(".only-gearbox", !(t === "portada" || t === "historia" || t === "historiaV2"));
   setHidden(".only-jpg", exportFormatSelect.value !== "jpg");
 }
 
@@ -150,6 +154,8 @@ function getFormData() {
     extra2: document.getElementById("extra2")?.value || "",
     clientName: clientNameInput?.value || "",
     soldText: soldTextInput?.value || "VENDIDO",
+    price: document.getElementById("price")?.value || "",
+    priceCredit: document.getElementById("priceCredit")?.value || "",
   };
 }
 
@@ -159,6 +165,7 @@ function getSelectedTemplates() {
   if (expVenta?.checked) arr.push("venta");
   if (expVendido?.checked) arr.push("vendido");
   if (expHistoria?.checked) arr.push("historia");
+  if (expHistoriaV2?.checked) arr.push("historiaV2");
   if (expFelicitaciones?.checked) arr.push("felicitaciones");
   return arr;
 }
@@ -168,6 +175,7 @@ function getDrawer(template) {
   if (template === "venta") return drawVenta;
   if (template === "vendido") return drawVendido;
   if (template === "historia") return drawHistoria;
+  if (template === "historiaV2") return (ctx, img, data, transform) => drawHistoriaV2(ctx, img, data, transform);
   if (template === "felicitaciones") return drawFelicitaciones;
   return drawPortadaFicha;
 }
@@ -177,6 +185,7 @@ function getRenderer(template) {
   if (template === "venta") return renderVenta;
   if (template === "vendido") return renderVendido;
   if (template === "historia") return renderHistoria;
+  if (template === "historiaV2") return renderHistoriaV2;
   if (template === "felicitaciones") return renderFelicitaciones;
   return renderPortadaFicha;
 }
@@ -186,6 +195,7 @@ function templatePrefix(template) {
   if (template === "venta") return "VENTA";
   if (template === "vendido") return "VENDIDO";
   if (template === "historia") return "HISTORIA";
+  if (template === "historiaV2") return "HISTORIA-V2";
   if (template === "felicitaciones") return "FELICITACIONES";
   return "BANNER";
 }
@@ -195,6 +205,7 @@ function folderName(template) {
   if (template === "venta") return "venta";
   if (template === "vendido") return "vendido";
   if (template === "historia") return "historia";
+  if (template === "historiaV2") return "historia-v2";
   if (template === "felicitaciones") return "felicitaciones";
   return "banners";
 }
@@ -212,6 +223,8 @@ function getOutputName({ template, data, index, ext }) {
     parts = [prefix, brand, model, year, n];
   } else if (template === "historia") {
     parts = [prefix, model, year, "01"];
+  } else if (template === "historiaV2") {
+    parts = [prefix, model, year, n];
   } else if (template === "felicitaciones") {
     parts = [prefix, model, year, client, n];
   } else {
@@ -230,7 +243,11 @@ function renderPreview(item) {
   const data = getFormData();
   const drawer = getDrawer(state.activeTemplate);
   const ctx = item.canvas.getContext("2d");
-  drawer(ctx, item.img, data, item.transform, _appLogo);
+  if (state.activeTemplate === "historiaV2") {
+    drawer(ctx, item.img, data, item.transform);
+  } else {
+    drawer(ctx, item.img, data, item.transform, _appLogo);
+  }
   if (showGuidesChk.checked) {
     drawRuleOfThirds(ctx, item.canvas.width, item.canvas.height, 0.25);
   }
@@ -361,6 +378,8 @@ document.addEventListener("input", (e) => {
     "extra2",
     "clientName",
     "soldText",
+    "price",
+    "priceCredit",
   ];
   if (relevant.includes(el.id)) rerenderAll();
 });
@@ -371,7 +390,7 @@ function makePreviewItem(item) {
 
   const canvas = document.createElement("canvas");
   canvas.width = 1080;
-  canvas.height = 1080;
+  canvas.height = state.activeTemplate === "historiaV2" ? 1920 : 1080;
   canvas.className = "preview-canvas";
   item.canvas = canvas;
 
@@ -945,8 +964,9 @@ async function buildZipAndDownload() {
   });
 
   ensureStoryDefaults();
+  const singleTemplates = selectedTemplates.filter((t) => t === "historia");
   const perImageTemplates = selectedTemplates.filter((t) => t !== "historia");
-  const total = state.items.length * perImageTemplates.length + (selectedTemplates.includes("historia") ? 1 : 0);
+  const total = state.items.length * perImageTemplates.length + singleTemplates.length;
   let done = 0;
   const t0 = performance.now();
 
@@ -954,7 +974,7 @@ async function buildZipAndDownload() {
   setProgress(0, total, "Exportando");
 
   const jobs = [];
-  // Historia exports a single image (not per-photo)
+  // Historia (original multi-block) exports a single image
   if (selectedTemplates.includes("historia")) {
     jobs.push({ template: "historia", item: null });
   }
