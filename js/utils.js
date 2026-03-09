@@ -29,8 +29,8 @@ export function formatKm(km) {
   const raw = String(km).trim();
   if (!raw) return "";
   const n = Number(raw);
-  // Only format if it's a valid positive number.
-  if (!Number.isFinite(n) || n <= 0) return "";
+  // Only format if it's a valid non-negative number.
+  if (!Number.isFinite(n) || n < 0) return "";
   return n.toLocaleString("es-AR");
 }
 
