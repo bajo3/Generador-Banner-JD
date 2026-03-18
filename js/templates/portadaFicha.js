@@ -5,10 +5,9 @@ import { rr, WHITE, BLACK } from "./_shared.js";
 const W = 1080;
 const H = 1080;
 
-const BLUE       = "#1a50c8";
-const BLUE_DARK  = "#0e3490";
-const CYAN       = "#00d4ff";
-const PINK       = "#ff008c";
+const BLUE      = "#1a50c8";
+const BLUE_DARK = "#0e3490";
+const CYAN      = "#00d4ff";
 
 export function drawPortadaFicha(ctx, img, data, transform = { zoom:1, panX:0, panY:0 }, logoImg) {
 
@@ -28,23 +27,11 @@ export function drawPortadaFicha(ctx, img, data, transform = { zoom:1, panX:0, p
     ctx.restore();
   }
 
-  // ── 3. Tinte negro uniforme sobre toda la foto ────────────────────────────
-  ctx.fillStyle = "rgba(0,0,0,0.38)";
+  // ── 3. Tinte negro uniforme — resalta el blanco ───────────────────────────
+  ctx.fillStyle = "rgba(0,0,0,0.42)";
   ctx.fillRect(0, 0, W, footerY);
 
-  // ── 4. Overlay blanco suave en zona de specs (parte baja) ─────────────────
-  ctx.save();
-  const infoY = 430;
-  const vbot  = ctx.createLinearGradient(0, infoY, 0, footerY);
-  vbot.addColorStop(0,    "rgba(255,255,255,0)");
-  vbot.addColorStop(0.20, "rgba(255,255,255,0.28)");
-  vbot.addColorStop(0.60, "rgba(255,255,255,0.48)");
-  vbot.addColorStop(1,    "rgba(255,255,255,0.58)");
-  ctx.fillStyle = vbot;
-  ctx.fillRect(0, infoY, W, footerY - infoY);
-  ctx.restore();
-
-  // ── 5. Datos ──────────────────────────────────────────────────────────────
+  // ── 4. Datos ──────────────────────────────────────────────────────────────
   const brand   = cleanSpaces(upper(data.brand   || ""));
   const model   = cleanSpaces(upper(data.model   || ""));
   const version = cleanSpaces(upper(data.version || ""));
@@ -57,7 +44,7 @@ export function drawPortadaFicha(ctx, img, data, transform = { zoom:1, panX:0, p
 
   let ty = 32;
 
-  // ── 6. Marca ──────────────────────────────────────────────────────────────
+  // ── 5. Marca – blanco grueso con stroke cyan ──────────────────────────────
   if (brand) {
     const fs = Math.min(108, fitText(ctx, brand, 960, 108, 40, "system-ui, sans-serif", "900"));
     textStrokeFill(ctx, brand, cx, ty + fs * 0.84, {
@@ -71,7 +58,7 @@ export function drawPortadaFicha(ctx, img, data, transform = { zoom:1, panX:0, p
     ty += fs + 4;
   }
 
-  // ── 7. Modelo ─────────────────────────────────────────────────────────────
+  // ── 6. Modelo – blanco grueso con stroke cyan ─────────────────────────────
   if (model) {
     const fs = fitText(ctx, model, 1020, 155, 56, "system-ui, sans-serif", "900");
     textStrokeFill(ctx, model, cx, ty + fs * 0.84, {
@@ -85,7 +72,7 @@ export function drawPortadaFicha(ctx, img, data, transform = { zoom:1, panX:0, p
     ty += fs + 22;
   }
 
-  // ── 8. Badge versión – azul sólido ────────────────────────────────────────
+  // ── 7. Badge versión – texto blanco, fondo azul sólido ───────────────────
   if (version) {
     const vFS = Math.min(40, fitText(ctx, version, 740, 40, 18, "system-ui, sans-serif", "800"));
     ctx.font = `800 ${vFS}px system-ui, sans-serif`;
@@ -96,24 +83,21 @@ export function drawPortadaFicha(ctx, img, data, transform = { zoom:1, panX:0, p
     const bX   = cx - bW / 2;
     const br   = 6;
 
-    // fondo azul sólido
     ctx.save();
     rr(ctx, bX, ty, bW, bH, br);
     const bg = ctx.createLinearGradient(bX, ty, bX + bW, ty + bH);
     bg.addColorStop(0, "#2060e0");
     bg.addColorStop(1, BLUE_DARK);
     ctx.fillStyle = bg;
-    ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
+    ctx.shadowColor = "rgba(0,0,0,0.50)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
     ctx.fill();
     ctx.restore();
 
-    // brillo top
     ctx.save();
     rr(ctx, bX + 2, ty + 2, bW - 4, bH * 0.42, br);
-    ctx.fillStyle = "rgba(255,255,255,0.13)"; ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.10)"; ctx.fill();
     ctx.restore();
 
-    // texto blanco
     ctx.save();
     ctx.font = `800 ${vFS}px system-ui, sans-serif`;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -125,39 +109,38 @@ export function drawPortadaFicha(ctx, img, data, transform = { zoom:1, panX:0, p
     ty += bH + 22;
   }
 
-  // ── 9. KM ─────────────────────────────────────────────────────────────────
-  {
-    const kmFS = 82;
+  // ── Helper: dibuja línea de texto blanco ──────────────────────────────────
+  function specLine(text, fontSize, weight = "600") {
+    const fs = Math.min(fontSize, fitText(ctx, text, 860, fontSize, 20, "system-ui, sans-serif", weight));
     ctx.save();
-    ctx.font = `900 ${kmFS}px system-ui, sans-serif`;
+    ctx.font = `${weight} ${fs}px system-ui, sans-serif`;
     ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = "#0d0d0d";
-    ctx.shadowColor = "rgba(255,255,255,0.50)"; ctx.shadowBlur = 6;
-    ctx.fillText(kmLine, cx, ty + kmFS * 0.84);
+    ctx.fillStyle = WHITE;
+    ctx.shadowColor = "rgba(0,0,0,0.80)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 3;
+    ctx.fillText(text, cx, ty + fs * 0.84);
     ctx.restore();
-    ty += kmFS + 16;
+    return fs;
   }
 
-  // ── 10. Spec lines ────────────────────────────────────────────────────────
+  // ── 8. KM – blanco, el más grande ────────────────────────────────────────
+  {
+    const fs = specLine(kmLine, 84, "900");
+    ty += fs + 16;
+  }
+
+  // ── 9. Specs – todos blancos ──────────────────────────────────────────────
   const specLines = [];
   if (gearbox) specLines.push(`Caja: ${gearbox}`);
   if (year)    specLines.push(`Año: ${year}`);
   if (extra1)  specLines.push(extra1);
   if (extra2)  specLines.push(extra2);
 
-  ctx.save();
-  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
   for (const line of specLines) {
-    const lineFS = Math.min(46, fitText(ctx, line, 820, 46, 24, "system-ui, sans-serif", "600"));
-    ctx.font = `600 ${lineFS}px system-ui, sans-serif`;
-    ctx.fillStyle = "#0d0d0d";
-    ctx.shadowColor = "rgba(255,255,255,0.55)"; ctx.shadowBlur = 5;
-    ctx.fillText(line, cx, ty + lineFS * 0.84);
-    ty += lineFS + 14;
+    const fs = specLine(line, 46, "600");
+    ty += fs + 14;
   }
-  ctx.restore();
 
-  // ── 11. Footer azul sólido ────────────────────────────────────────────────
+  // ── 10. Footer – fondo azul, texto blanco ─────────────────────────────────
   ctx.save();
   const fg = ctx.createLinearGradient(0, footerY, 0, H);
   fg.addColorStop(0, BLUE);
@@ -166,8 +149,11 @@ export function drawPortadaFicha(ctx, img, data, transform = { zoom:1, panX:0, p
   ctx.fillRect(0, footerY, W, FOOTER_H);
   ctx.restore();
 
-  // divisores footer
-  const colW = W / 3;
+  const colW  = W / 3;
+  const midY  = footerY + FOOTER_H / 2 + 5;
+  const PHONE   = "2494587046";
+  const COMPANY = "Jesus Diaz Automotores";
+
   ctx.save();
   ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1.5;
   [colW, colW * 2].forEach(x => {
@@ -175,11 +161,6 @@ export function drawPortadaFicha(ctx, img, data, transform = { zoom:1, panX:0, p
   });
   ctx.restore();
 
-  const PHONE   = "2494587046";
-  const COMPANY = "Jesus Diaz Automotores";
-  const midY    = footerY + FOOTER_H / 2 + 5;
-
-  // empresa izq y der
   const leftFS = Math.min(27, fitText(ctx, COMPANY, colW - 24, 27, 13, "system-ui, sans-serif", "400"));
   ctx.save();
   ctx.textBaseline = "middle"; ctx.textAlign = "center";
@@ -189,7 +170,6 @@ export function drawPortadaFicha(ctx, img, data, transform = { zoom:1, panX:0, p
   ctx.fillText(COMPANY, colW * 2 + colW / 2, midY);
   ctx.restore();
 
-  // teléfono centro – blanco bold
   const phoneFS = Math.min(34, fitText(ctx, PHONE, colW - 20, 34, 16, "system-ui, sans-serif", "800"));
   ctx.save();
   ctx.textBaseline = "middle"; ctx.textAlign = "center";
@@ -198,7 +178,7 @@ export function drawPortadaFicha(ctx, img, data, transform = { zoom:1, panX:0, p
   ctx.fillText(PHONE, W / 2, midY);
   ctx.restore();
 
-  // ── 12. Logo arriba a la derecha ──────────────────────────────────────────
+  // ── 11. Logo arriba a la derecha ──────────────────────────────────────────
   if (logoImg) {
     const lH = 56;
     const lW = lH * (801 / 253);
@@ -208,8 +188,6 @@ export function drawPortadaFicha(ctx, img, data, transform = { zoom:1, panX:0, p
     ctx.restore();
   }
 }
-
-// ── render (public API) ───────────────────────────────────────────────────────
 
 export async function renderPortadaFicha({ img, data, transform = { zoom:1, panX:0, panY:0 } }) {
   const canvas = document.createElement("canvas");
