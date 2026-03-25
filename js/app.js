@@ -6,7 +6,7 @@ import { drawRuleOfThirds } from "./draw.js";
 import {
   drawPortadaFicha, drawVenta, drawVendido, drawHistoria, drawHistoriaV2, drawFelicitaciones,
   renderPortadaFicha, renderVenta, renderVendido, renderHistoria, renderHistoriaV2, renderFelicitaciones,
-  historiaBlockFromY, loadLogoOnce,
+  historiaBlockFromY, drawHistoriaOverlay, loadLogoOnce,
 } from "./templates/index.js";
 
 // ── Logo pre-load ─────────────────────────────────────────────────────────────
@@ -318,8 +318,14 @@ function renderStoryPreview() {
   ensureStoryDefaults();
   const data = getFormData();
   const ctx = state.storyItem.canvas.getContext("2d");
-  drawHistoria(ctx, state.images, data, state.story, _appLogo);
-  if (showGuidesChk.checked) drawRuleOfThirds(ctx, state.storyItem.canvas.width, state.storyItem.canvas.height, 0.25);
+  drawHistoria(ctx, state.images, data, { ...state.story, activeBlock: null }, _appLogo);
+  if (state.storyItem.overlayCanvas) {
+    const overlayCtx = state.storyItem.overlayCanvas.getContext("2d");
+    drawHistoriaOverlay(overlayCtx, state.story);
+    if (showGuidesChk.checked) drawRuleOfThirds(overlayCtx, state.storyItem.overlayCanvas.width, state.storyItem.overlayCanvas.height, 0.25);
+  } else if (showGuidesChk.checked) {
+    drawRuleOfThirds(ctx, state.storyItem.canvas.width, state.storyItem.canvas.height, 0.25);
+  }
 }
 
 function rebuildPreviewsForActiveTemplate() {
@@ -492,9 +498,20 @@ function makeStoryPreviewItem() {
   const wrap = document.createElement("div");
   wrap.className = "preview-item story-preview-wrap";
 
+  const canvasStack = document.createElement("div");
+  canvasStack.className = "story-canvas-stack";
+
   const canvas = document.createElement("canvas");
   canvas.width = 1080; canvas.height = 1920;
   canvas.className = "preview-canvas preview-canvas-story";
+
+  const overlayCanvas = document.createElement("canvas");
+  overlayCanvas.width = 1080; overlayCanvas.height = 1920;
+  overlayCanvas.className = "preview-canvas preview-canvas-story story-overlay-canvas";
+  overlayCanvas.setAttribute("aria-hidden", "true");
+
+  canvasStack.appendChild(canvas);
+  canvasStack.appendChild(overlayCanvas);
 
   const controls = document.createElement("div");
   controls.className = "story-controls";
@@ -567,7 +584,7 @@ function makeStoryPreviewItem() {
   controls.appendChild(secZoom); controls.appendChild(hint);
 
   const name = document.createElement("div"); name.className = "preview-name";
-  state.storyItem = { canvas, nameEl: name, zoomInput: zoom };
+  state.storyItem = { canvas, overlayCanvas, nameEl: name, zoomInput: zoom };
 
   const getActive = () => state.story.blocks[state.story.activeBlock];
   const syncZoom = () => {
@@ -663,7 +680,7 @@ function makeStoryPreviewItem() {
     syncZoom(); renderStoryPreview();
   });
 
-  wrap.appendChild(canvas); wrap.appendChild(controls); wrap.appendChild(name);
+  wrap.appendChild(canvasStack); wrap.appendChild(controls); wrap.appendChild(name);
   return wrap;
 }
 

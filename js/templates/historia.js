@@ -84,6 +84,47 @@ function drawSeparator(ctx, y) {
 }
 
 // ── Photo block ──────────────────────────────────────────────────────────────
+function drawActiveCropOverlay(ctx, rect) {
+  const vg = ctx.createRadialGradient(
+    rect.x + rect.w / 2, rect.y + rect.h / 2, rect.w * 0.25,
+    rect.x + rect.w / 2, rect.y + rect.h / 2, rect.w * 0.88
+  );
+  vg.addColorStop(0, "rgba(0,0,0,0)");
+  vg.addColorStop(1, "rgba(0,0,0,0.35)");
+  ctx.fillStyle = vg;
+  ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+
+  ctx.strokeStyle = PINK;
+  ctx.lineWidth = 6;
+  ctx.strokeRect(rect.x + 3, rect.y + 3, rect.w - 6, rect.h - 6);
+
+  const bl = 44, bt = 7;
+  ctx.fillStyle = PINK;
+  [
+    [rect.x + 3,          rect.y + 3,          1,  1 ],
+    [rect.x + rect.w - 3, rect.y + 3,          -1, 1 ],
+    [rect.x + 3,          rect.y + rect.h - 3, 1,  -1],
+    [rect.x + rect.w - 3, rect.y + rect.h - 3, -1, -1],
+  ].forEach(([bx, by, sx, sy]) => {
+    ctx.fillRect(bx, by - (bt / 2) * sy, sx * bl, bt);
+    ctx.fillRect(bx - (bt / 2) * sx, by, bt, sy * bl);
+  });
+
+  const bh = 40, bp = 26;
+  const btxt = "✎  EDITAR RECORTE";
+  ctx.font = "700 18px system-ui, sans-serif";
+  const bw = ctx.measureText(btxt).width + bp * 2;
+  const bx2 = rect.x + (rect.w - bw) / 2;
+  const by2 = rect.y + rect.h - bh - 16;
+  rr(ctx, bx2, by2, bw, bh, bh / 2);
+  ctx.fillStyle = "rgba(255,0,140,0.88)";
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(btxt, rect.x + rect.w / 2, by2 + bh / 2);
+}
+
 function drawPhotoBlock(ctx, img, rect, transform, isActive) {
   ctx.save();
   ctx.beginPath();
@@ -124,48 +165,7 @@ function drawPhotoBlock(ctx, img, rect, transform, isActive) {
   }
 
   // Active overlay (preview only)
-  if (isActive) {
-    const vg = ctx.createRadialGradient(
-      rect.x + rect.w / 2, rect.y + rect.h / 2, rect.w * 0.25,
-      rect.x + rect.w / 2, rect.y + rect.h / 2, rect.w * 0.88
-    );
-    vg.addColorStop(0, "rgba(0,0,0,0)");
-    vg.addColorStop(1, "rgba(0,0,0,0.35)");
-    ctx.fillStyle = vg;
-    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-
-    ctx.strokeStyle = PINK;
-    ctx.lineWidth = 6;
-    ctx.strokeRect(rect.x + 3, rect.y + 3, rect.w - 6, rect.h - 6);
-
-    // Corner brackets
-    const bl = 44, bt = 7;
-    ctx.fillStyle = PINK;
-    [
-      [rect.x + 3,          rect.y + 3,          1,  1 ],
-      [rect.x + rect.w - 3, rect.y + 3,          -1, 1 ],
-      [rect.x + 3,          rect.y + rect.h - 3, 1,  -1],
-      [rect.x + rect.w - 3, rect.y + rect.h - 3, -1, -1],
-    ].forEach(([bx, by, sx, sy]) => {
-      ctx.fillRect(bx, by - (bt / 2) * sy, sx * bl, bt);
-      ctx.fillRect(bx - (bt / 2) * sx, by, bt, sy * bl);
-    });
-
-    // Badge
-    const bh = 40, bp = 26;
-    const btxt = "✎  EDITAR RECORTE";
-    ctx.font = "700 18px system-ui, sans-serif";
-    const bw = ctx.measureText(btxt).width + bp * 2;
-    const bx2 = rect.x + (rect.w - bw) / 2;
-    const by2 = rect.y + rect.h - bh - 16;
-    rr(ctx, bx2, by2, bw, bh, bh / 2);
-    ctx.fillStyle = "rgba(255,0,140,0.88)";
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(btxt, rect.x + rect.w / 2, by2 + bh / 2);
-  }
+  if (isActive) drawActiveCropOverlay(ctx, rect);
 
   ctx.restore();
 }
@@ -389,6 +389,13 @@ export function drawHistoria(ctx, images, data, story, logoImg) {
   drawSeparator(ctx, getSepY(story, "s1"));
   drawSeparator(ctx, getSepY(story, "s2"));
   drawSeparator(ctx, getSepY(story, "s3"));
+}
+
+export function drawHistoriaOverlay(ctx, story) {
+  ctx.clearRect(0, 0, W, H);
+  const active = story?.activeBlock ?? null;
+  if (!(active === 1 || active === 2 || active === 4)) return;
+  drawActiveCropOverlay(ctx, blockRect(active));
 }
 
 export async function renderHistoria({ images, data, story }) {

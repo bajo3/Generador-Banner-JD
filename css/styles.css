@@ -356,6 +356,24 @@ input[type="file"] {
   display: block;
 }
 
+
+.story-canvas-stack {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.story-canvas-stack .preview-canvas-story {
+  margin: 0;
+}
+
+.story-overlay-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 .story-row {
   display: flex;
   align-items: center;
